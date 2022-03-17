@@ -205,10 +205,6 @@ func (b *builder) getWriter(name string) io.Writer {
 	}
 }
 
-func getLogger() *zap.SugaredLogger {
-	return proxy.logger
-}
-
 //Debug 会调试模式下打印caller，其他忽略，减少开销
 func Debug(format string, a ...interface{}) {
 	proxy.logger.Debugf(format, a...)
