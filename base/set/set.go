@@ -18,33 +18,33 @@ func NewSet[T comparable](items ...T) (r Set[T]) {
 	return r
 }
 
-func AddItem[T comparable](set Set[T], items ...T) Set[T] {
+func (set Set[T]) AddItem(items ...T) Set[T] {
 	for _, item := range items {
 		set.values[item] = struct{}{}
 	}
 	return set
 }
 
-func RemoveItem[T comparable](set Set[T], items ...T) Set[T] {
+func (set Set[T]) RemoveItem(items ...T) Set[T] {
 	for _, item := range items {
 		delete(set.values, item)
 	}
 	return set
 }
 
-func Contains[T comparable](set Set[T], item T) bool {
+func (set Set[T]) Contains(item T) bool {
 	_, ok := set.values[item]
 	return ok
 }
 
-func Size[T comparable](set Set[T]) int {
+func (set Set[T]) Size() int {
 	return len(set.values)
 }
 
 //Union 两个set的并集
-func Union[T comparable](lhs, rhs Set[T]) (r Set[T]) {
-	s := make(map[T]struct{}, Size(lhs))
-	for t, v := range lhs.values {
+func (set Set[T]) Union(rhs Set[T]) (r Set[T]) {
+	s := make(map[T]struct{}, set.Size())
+	for t, v := range set.values {
 		s[t] = v
 	}
 	for t, v := range rhs.values {
@@ -55,10 +55,10 @@ func Union[T comparable](lhs, rhs Set[T]) (r Set[T]) {
 }
 
 //Intersect 两个set的交集
-func Intersect[T comparable](lhs, rhs Set[T]) (r Set[T]) {
+func (set Set[T]) Intersect(rhs Set[T]) (r Set[T]) {
 	s := make(map[T]struct{})
-	for t := range lhs.values {
-		if Contains(rhs, t) {
+	for t := range set.values {
+		if rhs.Contains(t) {
 			s[t] = struct{}{}
 		}
 	}
@@ -67,10 +67,10 @@ func Intersect[T comparable](lhs, rhs Set[T]) (r Set[T]) {
 }
 
 //Difference 两个集合的差集
-func Difference[T comparable](lhs, rhs Set[T]) (r Set[T]) {
+func (set Set[T]) Difference(rhs Set[T]) (r Set[T]) {
 	s := make(map[T]struct{})
-	for t := range lhs.values {
-		if !Contains(rhs, t) {
+	for t := range set.values {
+		if !rhs.Contains(t) {
 			s[t] = struct{}{}
 		}
 	}
@@ -79,8 +79,8 @@ func Difference[T comparable](lhs, rhs Set[T]) (r Set[T]) {
 }
 
 //ToArray 转为数组
-func ToArray[T comparable](set Set[T]) []T {
-	r := make([]T, 0, Size(set))
+func (set Set[T]) ToArray() []T {
+	r := make([]T, 0, set.Size())
 	for t := range set.values {
 		r = append(r, t)
 	}
@@ -88,7 +88,7 @@ func ToArray[T comparable](set Set[T]) []T {
 }
 
 //ForEach 遍历加回调
-func ForEach[T comparable](set Set[T], f func(T)) {
+func (set Set[T]) ForEach(f func(T)) {
 	for t := range set.values {
 		f(t)
 	}
