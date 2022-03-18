@@ -1,7 +1,7 @@
 package arrayutil
 
 import (
-	"video.hermes.odin/go-common/base/constraint"
+	"github.com/YiuTerran/go-common/base/constraint"
 )
 
 /**

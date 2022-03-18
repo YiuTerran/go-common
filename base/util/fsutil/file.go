@@ -1,8 +1,8 @@
 package fsutil
 
 import (
+	"github.com/YiuTerran/go-common/base/log"
 	"os"
-	"video.hermes.odin/go-common/base/log"
 )
 
 //GetLastModifyTime 获取文件最后更新时间

@@ -3,8 +3,8 @@ package sampleutil
 //alias method，O(1)随机抽样算法; 当需要对同一个对象多次大量采样时，使用该算法，否则使用WeightedChoice即可
 
 import (
+	"github.com/YiuTerran/go-common/base/util/arrayutil"
 	"math/rand"
-	"video.hermes.odin/go-common/base/util/arrayutil"
 )
 
 // AliasTable is a discrete distribution

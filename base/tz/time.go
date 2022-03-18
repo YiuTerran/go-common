@@ -1,8 +1,8 @@
 package tz
 
 import (
+	"github.com/YiuTerran/go-common/base/log"
 	"time"
-	"video.hermes.odin/go-common/base/log"
 )
 
 const (

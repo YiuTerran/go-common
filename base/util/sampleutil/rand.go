@@ -1,9 +1,9 @@
 package sampleutil
 
 import (
+	"github.com/YiuTerran/go-common/base/constraint"
+	"github.com/YiuTerran/go-common/base/util/arrayutil"
 	"math/rand"
-	"video.hermes.odin/go-common/base/constraint"
-	"video.hermes.odin/go-common/base/util/arrayutil"
 )
 
 //RandomString 随机字符串，包含大小写字母和数字

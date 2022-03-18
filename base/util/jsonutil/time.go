@@ -2,10 +2,10 @@ package jsonutil
 
 import (
 	"database/sql/driver"
+	"github.com/YiuTerran/go-common/base/log"
+	"github.com/YiuTerran/go-common/base/tz"
 	"github.com/araddon/dateparse"
 	"time"
-	"video.hermes.odin/go-common/base/log"
-	"video.hermes.odin/go-common/base/tz"
 )
 
 type Time struct {
