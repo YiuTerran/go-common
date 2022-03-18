@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -56,23 +57,28 @@ var (
 )
 
 type loggerProxy struct {
-	path       string
-	level      Level
-	out        OutType
-	maxSize    int
-	maxAge     int
-	maxBackUps int
+	path         string
+	level        Level
+	out          OutType
+	maxSize      int
+	maxAge       int
+	maxBackUps   int
+	enableRotate bool
 
 	zapLevel zap.AtomicLevel
-	logger   *zap.SugaredLogger
+	logger   atomic.Value
+	dLogger  *zap.SugaredLogger
+	nLogger  *zap.SugaredLogger
 	tracker  *zap.Logger
 }
 
-func (lp *loggerProxy) enableDebug(debug bool) {
+func (lp *loggerProxy) EnableDebug(debug bool) {
 	if debug {
 		lp.zapLevel.SetLevel(zapcore.DebugLevel)
+		lp.logger.Store(lp.dLogger)
 	} else {
 		lp.zapLevel.SetLevel(zapcore.InfoLevel)
+		lp.logger.Store(lp.nLogger)
 	}
 }
 
@@ -111,6 +117,11 @@ func (b *builder) MaxBackUps(count int) *builder {
 	return b
 }
 
+func (b *builder) EnableRotate(enable bool) *builder {
+	b.logger.enableRotate = enable
+	return b
+}
+
 func (b *builder) Build() {
 	once.Do(func() {
 		p := b.logger
@@ -124,7 +135,7 @@ func (b *builder) Build() {
 			}
 		}
 		if p.path != "" {
-			if !exists(p.path) && os.Mkdir(p.path, os.ModePerm) != nil {
+			if !exists(p.path) && os.Mkdir(p.path, 0755) != nil {
 				panic("fail to create log directory")
 			}
 		}
@@ -138,7 +149,10 @@ func (b *builder) Build() {
 		//json的track日志
 		if p.out&TrackFileOut > 0 {
 			encoderCfg := zap.NewProductionEncoderConfig()
+			//meta数据
 			encoderCfg.TimeKey = "@ts"
+			encoderCfg.LevelKey = "@level"
+			encoderCfg.MessageKey = "@msg"
 			encoderCfg.EncodeTime = timeEncoder
 			p.tracker = zap.New(
 				zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg),
@@ -174,7 +188,12 @@ func (b *builder) Build() {
 				encoder, zapcore.AddSync(writer), hp))
 		}
 		core := zapcore.NewTee(cores...)
-		p.logger = zap.New(core).Sugar()
+		lg := zap.New(core)
+		p.logger = atomic.Value{}
+		p.nLogger = lg.Sugar()
+		//debug模式下打印堆栈
+		p.dLogger = lg.WithOptions(zap.AddCaller(), zap.AddCallerSkip(1)).Sugar()
+		p.EnableDebug(p.level == LevelDebug)
 		proxy = p
 	})
 }
@@ -197,6 +216,13 @@ func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 
 func (b *builder) getWriter(name string) io.Writer {
 	fullName := filepath.Join(b.logger.path, name)
+	if !b.logger.enableRotate {
+		f, err := os.OpenFile(fullName, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+		if err != nil {
+			panic("fail to open log file")
+		}
+		return f
+	}
 	return &lumberjack.Logger{
 		Filename:   fullName,
 		MaxSize:    b.logger.maxSize,
@@ -207,35 +233,44 @@ func (b *builder) getWriter(name string) io.Writer {
 
 //Debug 会调试模式下打印caller，其他忽略，减少开销
 func Debug(format string, a ...interface{}) {
-	proxy.logger.Debugf(format, a...)
+	proxy.logger.Load().(*zap.SugaredLogger).Debugf(format, a...)
 }
 
 func Info(format string, a ...interface{}) {
-	proxy.logger.Infof(format, a...)
+	proxy.logger.Load().(*zap.SugaredLogger).Infof(format, a...)
 }
 
 func Warn(format string, a ...interface{}) {
-	proxy.logger.Warnf(format, a...)
+	proxy.logger.Load().(*zap.SugaredLogger).Warnf(format, a...)
 }
 
 func Error(format string, a ...interface{}) {
-	proxy.logger.Errorf(format, a...)
+	proxy.logger.Load().(*zap.SugaredLogger).Errorf(format, a...)
 }
 
 func Fatal(format string, a ...interface{}) {
-	proxy.logger.Fatalf(format, a...)
+	proxy.logger.Load().(*zap.SugaredLogger).Fatalf(format, a...)
 }
 
-//Json 会输出json格式的日志，json日志在单独的文件里
-func Json(msg string, fields ...zap.Field) {
+//JsonInfo 会输出json格式的日志，json日志在单独的文件里
+func JsonInfo(msg string, fields ...zap.Field) {
 	proxy.tracker.Info(msg, fields...)
+}
+
+func JsonWarn(msg string, fields ...zap.Field) {
+	proxy.tracker.Warn(msg, fields...)
+}
+
+func JsonError(msg string, fields ...zap.Field) {
+	proxy.tracker.Error(msg, fields...)
 }
 
 func init() {
 	lg, _ := zap.NewDevelopment()
 	//默认情况下初始化一个仅输出到控制台的日志方便测试
-	proxy = &loggerProxy{
-		logger:  lg.Sugar(),
-		tracker: lg,
-	}
+	proxy = &loggerProxy{}
+	proxy.nLogger = lg.Sugar()
+	proxy.dLogger = lg.WithOptions(zap.AddCaller(), zap.AddCallerSkip(1)).Sugar()
+	proxy.logger = atomic.Value{}
+	proxy.EnableDebug(true)
 }
