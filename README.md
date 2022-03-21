@@ -13,7 +13,6 @@
 ```bash
 ├── base  # 基础库，常用数据结构和utils，log模块
 ├── db # sqlx + sqlbuiler的封装
-├── kafka # kafka pub/sub 等常用功能
 ├── module # 模块封装，将所有功能统一抽象为模块，提供启动器和模块间类似rpc的相互通信机制
 ├── nacos # 与nacos通信，配置中心和注册中心
 ├── network # tcp/udp对应module的封装，提供抽象解析器，提供json的一个范例实现

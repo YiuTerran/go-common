@@ -1,4 +1,4 @@
-package tz
+package timeutil
 
 import (
 	"github.com/YiuTerran/go-common/base/log"

@@ -1,4 +1,4 @@
-package bcd
+package bcdutil
 
 func pow100(power byte) uint64 {
 	res := uint64(1)
@@ -70,28 +70,28 @@ func toUint(value []byte, size int) uint64 {
 	return res
 }
 
-// ToUint8 Returns uint8 value converted from bcd byte.
+// ToUint8 Returns uint8 value converted from bcdutil byte.
 //
 // If byte is not BCD (e.g. 0x1A), function returns zero.
 func ToUint8(value byte) uint8 {
 	return uint8(toUint([]byte{value}, 1))
 }
 
-// ToUint16 Return uint16 value converted from at most last two bytes of bcd bytes array.
+// ToUint16 Return uint16 value converted from at most last two bytes of bcdutil bytes array.
 //
 // If any byte of used array part is not BCD (e.g 0x1A), function returns zero.
 func ToUint16(value []byte) uint16 {
 	return uint16(toUint(value, 2))
 }
 
-// ToUint32 Return uint32 value converted from at most last four bytes of bcd bytes array.
+// ToUint32 Return uint32 value converted from at most last four bytes of bcdutil bytes array.
 //
 // If any byte of used array part is not BCD (e.g 0x1A), function returns zero.
 func ToUint32(value []byte) uint32 {
 	return uint32(toUint(value, 4))
 }
 
-// ToUint64 Return uint64 value converted from at most last eight bytes of bcd bytes array.
+// ToUint64 Return uint64 value converted from at most last eight bytes of bcdutil bytes array.
 //
 // If any byte of used array part is not BCD (e.g 0x1A), function returns zero.
 func ToUint64(value []byte) uint64 {

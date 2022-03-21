@@ -20,8 +20,8 @@ vendor/
 
 *.dylib
 
-# Test binary, build with `go test -c`
+# Test binary, build with `g test -c`
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Output of the g coverage tool, specifically when used with LiteIDE
 *.out

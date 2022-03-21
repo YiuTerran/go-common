@@ -3,7 +3,7 @@ package jsonutil
 import (
 	"database/sql/driver"
 	"github.com/YiuTerran/go-common/base/log"
-	"github.com/YiuTerran/go-common/base/tz"
+	"github.com/YiuTerran/go-common/base/util/timeutil"
 	"github.com/araddon/dateparse"
 	"time"
 )
@@ -13,7 +13,7 @@ type Time struct {
 }
 
 func (t *Time) String() string {
-	return t.Format(tz.FullFormat)
+	return t.Format(timeutil.FullFormat)
 }
 
 func (t *Time) UnmarshalJSON(data []byte) (err error) {
@@ -42,7 +42,7 @@ func (t *Time) Value() (driver.Value, error) {
 	return t.Time, nil
 }
 
-func (t *Time) Scan(src interface{}) error {
+func (t *Time) Scan(src any) error {
 	if src == nil {
 		return nil
 	}

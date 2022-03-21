@@ -1,6 +1,7 @@
 package constraint
 
 /**
+  * 由于内置的constraint在1.18被移除，所以这里先自己写一个
   *  @author tryao
   *  @date 2022/03/18 14:06
 **/

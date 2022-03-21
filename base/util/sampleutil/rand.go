@@ -3,6 +3,7 @@ package sampleutil
 import (
 	"github.com/YiuTerran/go-common/base/constraint"
 	"github.com/YiuTerran/go-common/base/util/arrayutil"
+	"github.com/samber/lo"
 	"math/rand"
 )
 
@@ -47,16 +48,7 @@ func RandChoice[T constraint.Ordered](array []T, n int) []T {
 	if n <= 0 {
 		return nil
 	}
-	if n == 1 {
-		return []T{array[rand.Intn(len(array))]}
-	}
-	tmp := make([]T, len(array))
-	copy(tmp, array)
-	if len(tmp) <= n {
-		return tmp
-	}
-	Shuffle(tmp)
-	return tmp[:n]
+	return lo.Samples(array, n)
 }
 
 //WeightedChoice 根据权重随机，返回对应选项的索引，O(n)

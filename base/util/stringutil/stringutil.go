@@ -13,7 +13,7 @@ func Reverse(s string) string {
 	return string(runes)
 }
 
-func CombineHttpUrl(host string, path ...interface{}) string {
+func CombineHttpUrl(host string, path ...any) string {
 	if len(path) == 0 {
 		if strings.HasPrefix(host, "http") {
 			return host

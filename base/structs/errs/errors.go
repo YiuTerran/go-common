@@ -1,4 +1,4 @@
-package baseobj
+package errs
 
 import "fmt"
 

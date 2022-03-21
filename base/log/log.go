@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,6 +27,7 @@ const (
 	infoFileOutName  = "service.log"
 	errorFileOutName = "error.log"
 	trackFileOutName = "track.log"
+	panicFileOutName = "stderr.log"
 
 	//ConsoleOut 控制台输出
 	ConsoleOut OutType = 1
@@ -139,6 +141,12 @@ func (b *builder) Build() {
 				panic("fail to create log directory")
 			}
 		}
+		if p.out&NormalOutWithTrack > 0 {
+			//将panic日志重定向到文件，不然的话都会打到stderr里
+			if err := redirectStderr(filepath.Join(p.path, panicFileOutName)); err != nil {
+				panic("fail to redirect panic log to file...")
+			}
+		}
 		if p.maxBackUps == 0 {
 			p.maxBackUps = 30
 		}
@@ -232,23 +240,23 @@ func (b *builder) getWriter(name string) io.Writer {
 }
 
 //Debug 会调试模式下打印caller，其他忽略，减少开销
-func Debug(format string, a ...interface{}) {
+func Debug(format string, a ...any) {
 	proxy.logger.Load().(*zap.SugaredLogger).Debugf(format, a...)
 }
 
-func Info(format string, a ...interface{}) {
+func Info(format string, a ...any) {
 	proxy.logger.Load().(*zap.SugaredLogger).Infof(format, a...)
 }
 
-func Warn(format string, a ...interface{}) {
+func Warn(format string, a ...any) {
 	proxy.logger.Load().(*zap.SugaredLogger).Warnf(format, a...)
 }
 
-func Error(format string, a ...interface{}) {
+func Error(format string, a ...any) {
 	proxy.logger.Load().(*zap.SugaredLogger).Errorf(format, a...)
 }
 
-func Fatal(format string, a ...interface{}) {
+func Fatal(format string, a ...any) {
 	proxy.logger.Load().(*zap.SugaredLogger).Fatalf(format, a...)
 }
 
@@ -265,6 +273,14 @@ func JsonError(msg string, fields ...zap.Field) {
 	proxy.tracker.Error(msg, fields...)
 }
 
+// PanicStack 从panic中恢复并打印日志
+//注意recover必须在当前函数调用
+func PanicStack(prefix string, r any) {
+	buf := make([]byte, 1024)
+	l := runtime.Stack(buf, false)
+	Error("%s: %v-> %s", prefix, r, buf[:l])
+}
+
 func init() {
 	lg, _ := zap.NewDevelopment()
 	//默认情况下初始化一个仅输出到控制台的日志方便测试
@@ -272,5 +288,6 @@ func init() {
 	proxy.nLogger = lg.Sugar()
 	proxy.dLogger = lg.WithOptions(zap.AddCaller(), zap.AddCallerSkip(1)).Sugar()
 	proxy.logger = atomic.Value{}
-	proxy.EnableDebug(true)
+	proxy.zapLevel = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	proxy.logger.Store(proxy.dLogger)
 }
