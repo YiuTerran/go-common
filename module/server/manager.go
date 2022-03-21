@@ -22,7 +22,7 @@ type mod struct {
 var (
 	mods       = make(map[string]*mod)
 	tags       = make(map[string]*set.Set[module.Module])
-	lock       sync.Mutex
+	lock       sync.RWMutex
 	staticMode bool //静态模式
 )
 
@@ -35,8 +35,8 @@ func GetModuleByName(name string) module.Module {
 // 高阶函数
 func GetModuleByNameFunc(name string) func() module.Module {
 	return func() module.Module {
-		lock.Lock()
-		defer lock.Unlock()
+		lock.RLock()
+		defer lock.RUnlock()
 		m, ok := mods[name]
 		if !ok {
 			return nil
@@ -55,8 +55,8 @@ func GetModuleByTag(tag ...string) []module.Module {
 //适用于Module会动态热加载的场景
 func GetModuleByTagFunc(tag ...string) func() []module.Module {
 	return func() []module.Module {
-		lock.Lock()
-		defer lock.Unlock()
+		lock.RLock()
+		defer lock.RUnlock()
 		var s set.Set[module.Module]
 		for _, t := range tag {
 			m, ok := tags[t]
