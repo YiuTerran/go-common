@@ -25,6 +25,18 @@ type agent struct {
 	userData any
 }
 
+// CheckAuth 一般的用来校验是否验证通过的函数
+func CheckAuth(ag Agent) bool {
+	if ag == nil {
+		return false
+	}
+	if ag.UserData() == nil {
+		ag.Close()
+		return false
+	}
+	return true
+}
+
 // Run session数据的处理循环
 //这里出现真的错误才要断开连接
 func (a *agent) Run() {

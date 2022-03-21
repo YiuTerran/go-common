@@ -108,3 +108,14 @@ func DynamicCycle(what func(), delayAddr *time.Duration, stop chan struct{}) {
 		}
 	}()
 }
+
+// TextDuration 方便从字符串反序列化到Duration对象
+type TextDuration struct {
+	time.Duration
+}
+
+func (d *TextDuration) UnmarshalText(text []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(text))
+	return err
+}

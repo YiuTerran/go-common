@@ -6,4 +6,5 @@ use (
 	./module
 	./network
 	./protobuf
+	./redisutil
 )
