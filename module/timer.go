@@ -2,17 +2,18 @@ package module
 
 import (
 	"github.com/YiuTerran/go-common/base/log"
+	"github.com/YiuTerran/go-common/base/structs/chanx"
 	"time"
 )
 
 // Dispatcher one per goroutine (goroutine not safe)
 type Dispatcher struct {
-	ChanTimer chan *Timer
+	ChanTimer *chanx.UnboundedChan[*Timer]
 }
 
-func NewDispatcher(l int) *Dispatcher {
+func NewDispatcher() *Dispatcher {
 	dp := new(Dispatcher)
-	dp.ChanTimer = make(chan *Timer, l)
+	dp.ChanTimer = chanx.NewUnboundedChan[*Timer](initBufferSize)
 	return dp
 }
 
@@ -44,7 +45,7 @@ func (dp *Dispatcher) AfterFunc(d time.Duration, cb func()) *Timer {
 	t := new(Timer)
 	t.cb = cb
 	t.t = time.AfterFunc(d, func() {
-		dp.ChanTimer <- t
+		dp.ChanTimer.In <- t
 	})
 	return t
 }

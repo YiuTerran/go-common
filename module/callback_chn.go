@@ -26,7 +26,7 @@ type LinearContext struct {
 	mutexExecution sync.Mutex
 }
 
-func NewGo() *CallbackChn {
+func NewCallbackChn() *CallbackChn {
 	g := new(CallbackChn)
 	g.ChanCb = chanx.NewUnboundedChan[func()](initBufferSize)
 	return g

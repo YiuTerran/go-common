@@ -9,9 +9,9 @@ import (
 
 const initBufferSize = 2048
 
-//Server one server per goroutine (goroutine not safe)
-// one client per goroutine (goroutine not safe)
-type Server struct {
+//RpcServer one rpcServer per goroutine (goroutine not safe)
+// one rpcClient per goroutine (goroutine not safe)
+type RpcServer struct {
 	// id -> function
 	//
 	// function:
@@ -19,7 +19,7 @@ type Server struct {
 	// func(args []any) any
 	// func(args []any) []any
 	functions map[any]any
-	chanCall  *chanx.UnboundedChan[*callInfo]
+	ChanCall  *chanx.UnboundedChan[*callInfo]
 }
 
 type callInfo struct {
@@ -43,17 +43,17 @@ type retInfo struct {
 	cb any
 }
 
-type Client struct {
-	s                *Server
+type RpcClient struct {
+	s                *RpcServer
 	chanSyncRet      chan *retInfo
-	ChanAsyncRet     *chanx.UnboundedChan[*retInfo]
+	chanAsyncRet     *chanx.UnboundedChan[*retInfo]
 	pendingAsyncCall int
 }
 
-func NewServer() *Server {
-	s := new(Server)
+func NewRpcServer() *RpcServer {
+	s := new(RpcServer)
 	s.functions = make(map[any]any)
-	s.chanCall = chanx.NewUnboundedChan[*callInfo](initBufferSize)
+	s.ChanCall = chanx.NewUnboundedChan[*callInfo](initBufferSize)
 	return s
 }
 
@@ -66,8 +66,8 @@ func assert(i any) []any {
 }
 
 // Register 注册命令回调.
-//you must call the function before calling Open and CallbackChn
-func (s *Server) Register(id any, f any) {
+//you must call the function before calling CreateClient and CallbackChn
+func (s *RpcServer) Register(id any, f any) {
 	switch f.(type) {
 	case func([]any):
 	case func([]any) any:
@@ -81,7 +81,7 @@ func (s *Server) Register(id any, f any) {
 	s.functions[id] = f
 }
 
-func (s *Server) ret(ci *callInfo, ri *retInfo) (err error) {
+func (s *RpcServer) ret(ci *callInfo, ri *retInfo) (err error) {
 	if ci.chanRet == nil {
 		return
 	}
@@ -97,7 +97,7 @@ func (s *Server) ret(ci *callInfo, ri *retInfo) (err error) {
 	return
 }
 
-func (s *Server) exec(ci *callInfo) (err error) {
+func (s *RpcServer) exec(ci *callInfo) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.PanicStack("", r)
@@ -120,15 +120,15 @@ func (s *Server) exec(ci *callInfo) (err error) {
 	panic("bug for invalid func type")
 }
 
-func (s *Server) Exec(ci *callInfo) {
+func (s *RpcServer) execIgnoreError(ci *callInfo) {
 	err := s.exec(ci)
 	if err != nil {
-		log.Error("%v", err)
+		log.Error("callback error: %v", err)
 	}
 }
 
-// CallbackChn 在Server模块主线程里面运行命令，异步执行，goroutine safe
-func (s *Server) Go(id any, args ...any) {
+// Go 在Server模块主线程里面运行命令，异步执行，goroutine safe
+func (s *RpcServer) Go(id any, args ...any) {
 	f := s.functions[id]
 	if f == nil {
 		return
@@ -138,72 +138,72 @@ func (s *Server) Go(id any, args ...any) {
 		recover()
 	}()
 
-	s.chanCall.In <- &callInfo{
+	s.ChanCall.In <- &callInfo{
 		f:    f,
 		args: args,
 	}
 }
 
 // Call0 同步调用，无返回结果，goroutine safe
-func (s *Server) Call0(id any, args ...any) error {
-	return s.Open(true).Call0(id, args...)
+func (s *RpcServer) Call0(id any, args ...any) error {
+	return s.CreateClient(true).Call0(id, args...)
 }
 
 // Call1 同步调用，单个返回结果，goroutine safe
-func (s *Server) Call1(id any, args ...any) (any, error) {
-	return s.Open(true).Call1(id, args...)
+func (s *RpcServer) Call1(id any, args ...any) (any, error) {
+	return s.CreateClient(true).Call1(id, args...)
 }
 
 // CallN 同步调用，返回数组，goroutine safe
-func (s *Server) CallN(id any, args ...any) ([]any, error) {
-	return s.Open(true).CallN(id, args...)
+func (s *RpcServer) CallN(id any, args ...any) ([]any, error) {
+	return s.CreateClient(true).CallN(id, args...)
 }
 
-func (s *Server) Close() {
-	s.chanCall.Close()
-	for ci := range s.chanCall.Out {
+func (s *RpcServer) Close() {
+	s.ChanCall.Close()
+	for ci := range s.ChanCall.Out {
 		_ = s.ret(ci, &retInfo{
-			err: errors.New("chanrpc server closed"),
+			err: errors.New("chanrpc rpcServer closed"),
 		})
 	}
 }
 
-// Open 打开rpc，goroutine safe
-func (s *Server) Open(noAsync bool) *Client {
-	c := NewClient(noAsync)
+// CreateClient 打开rpc，goroutine safe
+func (s *RpcServer) CreateClient(noAsync bool) *RpcClient {
+	c := NewRpcClient(noAsync)
 	c.Attach(s)
 	return c
 }
 
-func NewClient(noAsync bool) *Client {
-	c := new(Client)
+func NewRpcClient(noAsync bool) *RpcClient {
+	c := new(RpcClient)
 	c.chanSyncRet = make(chan *retInfo, 1)
 	size := initBufferSize
 	if noAsync {
 		size = 0
 	}
-	c.ChanAsyncRet = chanx.NewUnboundedChan[*retInfo](size)
+	c.chanAsyncRet = chanx.NewUnboundedChan[*retInfo](size)
 	return c
 }
 
-func (c *Client) Attach(s *Server) {
+func (c *RpcClient) Attach(s *RpcServer) {
 	c.s = s
 }
 
-func (c *Client) call(ci *callInfo) (err error) {
+func (c *RpcClient) call(ci *callInfo) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
 		}
 	}()
 	//阻塞
-	c.s.chanCall.In <- ci
+	c.s.ChanCall.In <- ci
 	return
 }
 
-func (c *Client) f(id any, n int) (f any, err error) {
+func (c *RpcClient) f(id any, n int) (f any, err error) {
 	if c.s == nil {
-		err = errors.New("server not attached")
+		err = errors.New("rpcServer not attached")
 		return
 	}
 
@@ -231,7 +231,7 @@ func (c *Client) f(id any, n int) (f any, err error) {
 	return
 }
 
-func (c *Client) Call0(id any, args ...any) error {
+func (c *RpcClient) Call0(id any, args ...any) error {
 	f, err := c.f(id, 0)
 	if err != nil {
 		return err
@@ -250,7 +250,7 @@ func (c *Client) Call0(id any, args ...any) error {
 	return ri.err
 }
 
-func (c *Client) Call1(id any, args ...any) (any, error) {
+func (c *RpcClient) Call1(id any, args ...any) (any, error) {
 	f, err := c.f(id, 1)
 	if err != nil {
 		return nil, err
@@ -269,7 +269,7 @@ func (c *Client) Call1(id any, args ...any) (any, error) {
 	return ri.ret, ri.err
 }
 
-func (c *Client) CallN(id any, args ...any) ([]any, error) {
+func (c *RpcClient) CallN(id any, args ...any) ([]any, error) {
 	f, err := c.f(id, 2)
 	if err != nil {
 		return nil, err
@@ -287,26 +287,26 @@ func (c *Client) CallN(id any, args ...any) ([]any, error) {
 	ri := <-c.chanSyncRet
 	return assert(ri.ret), ri.err
 }
-func (c *Client) asyncCall(id any, args []any, cb any, n int) {
+func (c *RpcClient) asyncCall(id any, args []any, cb any, n int) {
 	f, err := c.f(id, n)
 	if err != nil {
-		c.ChanAsyncRet.In <- &retInfo{err: err, cb: cb}
+		c.chanAsyncRet.In <- &retInfo{err: err, cb: cb}
 		return
 	}
 
 	err = c.call(&callInfo{
 		f:       f,
 		args:    args,
-		chanRet: c.ChanAsyncRet.In,
+		chanRet: c.chanAsyncRet.In,
 		cb:      cb,
 	})
 	if err != nil {
-		c.ChanAsyncRet.In <- &retInfo{err: err, cb: cb}
+		c.chanAsyncRet.In <- &retInfo{err: err, cb: cb}
 		return
 	}
 }
 
-func (c *Client) AsyncCall(id any, _args ...any) {
+func (c *RpcClient) AsyncCall(id any, _args ...any) {
 	if len(_args) < 1 {
 		panic("callback function not found")
 	}
@@ -350,17 +350,17 @@ func execCb(ri *retInfo) {
 	return
 }
 
-func (c *Client) Cb(ri *retInfo) {
+func (c *RpcClient) cb(ri *retInfo) {
 	c.pendingAsyncCall--
 	execCb(ri)
 }
 
-func (c *Client) Close() {
+func (c *RpcClient) Close() {
 	for c.pendingAsyncCall > 0 {
-		c.Cb(<-c.ChanAsyncRet.Out)
+		c.cb(<-c.chanAsyncRet.Out)
 	}
 }
 
-func (c *Client) Idle() bool {
+func (c *RpcClient) Idle() bool {
 	return c.pendingAsyncCall == 0
 }

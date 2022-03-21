@@ -23,13 +23,11 @@ func dupFD(fd uintptr) (uintptr, error) {
 //
 // We also override os.Stderr for those other parts of Go which use
 // that and not fd 2 directly.
-func rewriteStderrFile(errorFile string) error {
+func redirectStderr(errorFile string) error {
 	f, err := os.OpenFile(errorFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return err
 	}
-	osStderrMu.Lock()
-	defer osStderrMu.Unlock()
 	if err := windows.SetStdHandle(windows.STD_ERROR_HANDLE, windows.Handle(f.Fd())); err != nil {
 		return err
 	}

@@ -1,13 +1,15 @@
-package module_test
+package module
 
 import (
 	"fmt"
-	"github.com/YiuTerran/go-common/module"
 	"sync"
+	"testing"
 )
 
-func Example() {
-	s := module.NewServer()
+//未导出测试
+
+func TestRpcClient_Cb(t *testing.T) {
+	s := NewRpcServer()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -35,7 +37,7 @@ func Example() {
 		wg.Done()
 
 		for {
-			s.Exec(<-s.chanCall.Out)
+			s.execIgnoreError(<-s.ChanCall.Out)
 		}
 	}()
 
@@ -44,7 +46,7 @@ func Example() {
 
 	// goroutine 2
 	go func() {
-		c := s.Open(false)
+		c := s.CreateClient(false)
 
 		// sync
 		err := c.Call0("f0")
@@ -104,14 +106,13 @@ func Example() {
 			}
 		})
 
-		c.Cb(<-c.ChanAsyncRet.Out)
-		c.Cb(<-c.ChanAsyncRet.Out)
-		c.Cb(<-c.ChanAsyncRet.Out)
-		c.Cb(<-c.ChanAsyncRet.Out)
+		c.cb(<-c.chanAsyncRet.Out)
+		c.cb(<-c.chanAsyncRet.Out)
+		c.cb(<-c.chanAsyncRet.Out)
+		c.cb(<-c.chanAsyncRet.Out)
 
 		// g
 		s.Go("f0")
-
 		wg.Done()
 	}()
 

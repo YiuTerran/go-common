@@ -43,7 +43,7 @@ func (set *Set[T]) Size() int {
 }
 
 //Union 两个set的并集
-func (set *Set[T]) Union(rhs Set[T]) (r Set[T]) {
+func (set *Set[T]) Union(rhs *Set[T]) (r Set[T]) {
 	s := make(map[T]struct{}, set.Size())
 	for t, v := range set.values {
 		s[t] = v
@@ -56,7 +56,7 @@ func (set *Set[T]) Union(rhs Set[T]) (r Set[T]) {
 }
 
 //Intersect 两个set的交集
-func (set *Set[T]) Intersect(rhs Set[T]) (r Set[T]) {
+func (set *Set[T]) Intersect(rhs *Set[T]) (r Set[T]) {
 	s := make(map[T]struct{})
 	for t := range set.values {
 		if rhs.Contains(t) {
@@ -68,7 +68,7 @@ func (set *Set[T]) Intersect(rhs Set[T]) (r Set[T]) {
 }
 
 //Difference 两个集合的差集
-func (set *Set[T]) Difference(rhs Set[T]) (r Set[T]) {
+func (set *Set[T]) Difference(rhs *Set[T]) (r Set[T]) {
 	s := make(map[T]struct{})
 	for t := range set.values {
 		if !rhs.Contains(t) {
