@@ -6,7 +6,6 @@ require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/google/uuid v1.3.0
 	github.com/huandu/go-clone v1.3.1
-	github.com/mix-go/xfmt v1.1.15
 	github.com/samber/lo v1.11.0
 	github.com/stretchr/testify v1.7.1
 	go.uber.org/zap v1.21.0
@@ -20,6 +19,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
+	golang.org/x/exp v0.0.0-20220321173239-a90fa8a75705 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
