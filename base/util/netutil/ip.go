@@ -2,9 +2,7 @@ package netutil
 
 import (
 	"bytes"
-	"encoding/json"
-	"io/ioutil"
-	"log"
+	"github.com/YiuTerran/go-common/base/util/httputil"
 	"math/big"
 	"net"
 	"net/http"
@@ -22,25 +20,16 @@ func NetAddr2IPPort(addr net.Addr) (ip string, port int) {
 	return
 }
 
-func GetOutboundIP() net.IP {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP
-}
-
+// IsInternetOK 网络是否正常
 func IsInternetOK() (ok bool) {
-	_, err := http.Get("http://www.google.cn/generate_204")
+	_, err := http.Get("https://www.google.cn/generate_204")
 	if err != nil {
 		return false
 	}
 	return true
 }
 
+// GetAllIP 获取所有网卡的ip
 func GetAllIP() []net.IP {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -62,6 +51,7 @@ func GetAllIP() []net.IP {
 	return result
 }
 
+// IsPublicIP 是否公网IP
 func IsPublicIP(IP net.IP) bool {
 	if IP.IsLoopback() || IP.IsLinkLocalMulticast() || IP.IsLinkLocalUnicast() {
 		return false
@@ -81,12 +71,14 @@ func IsPublicIP(IP net.IP) bool {
 	return false
 }
 
+// InetAton IPV4转整数
 func InetAton(ip net.IP) int64 {
 	ipv4Int := big.NewInt(0)
 	ipv4Int.SetBytes(ip.To4())
 	return ipv4Int.Int64()
 }
 
+// InetNtoa 整数转IPV4
 func InetNtoa(ipnr int64) net.IP {
 	var bs [4]byte
 	bs[0] = byte(ipnr & 0xFF)
@@ -96,6 +88,7 @@ func InetNtoa(ipnr int64) net.IP {
 	return net.IPv4(bs[3], bs[2], bs[1], bs[0])
 }
 
+// IpBetween 判断test是否在from和to之间的网段里
 func IpBetween(from net.IP, to net.IP, test net.IP) bool {
 	if from == nil || to == nil || test == nil {
 		return false
@@ -114,50 +107,11 @@ func IpBetween(from net.IP, to net.IP, test net.IP) bool {
 	return false
 }
 
-type IPInfo struct {
-	Code int `json:"code"`
-	Data IP  `json:"data"`
-}
-
-type IP struct {
-	Country   string `json:"country"`
-	CountryId string `json:"country_id"`
-	Area      string `json:"area"`
-	AreaId    string `json:"area_id"`
-	Region    string `json:"region"`
-	RegionId  string `json:"region_id"`
-	City      string `json:"city"`
-	CityId    string `json:"city_id"`
-	Isp       string `json:"isp"`
-}
-
 // GetExternalIP 获取公网IP
 func GetExternalIP() string {
-	resp, err := http.Get("http://myexternalip.com/raw")
-	if err != nil {
+	r, err := httputil.Request().Get("https://myexternalip.com/raw")
+	if err != nil || !r.IsSuccess() {
 		return ""
 	}
-	defer resp.Body.Close()
-	content, _ := ioutil.ReadAll(resp.Body)
-	return string(content)
-}
-
-func GetIPInfo(ip string) *IPInfo {
-	url := "http://ip.taobao.com/service/getIpInfo.php?ip="
-	url += ip
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	out, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil
-	}
-	var result IPInfo
-	if err := json.Unmarshal(out, &result); err != nil {
-		return nil
-	}
-	return &result
+	return string(r.Bytes())
 }
