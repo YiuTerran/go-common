@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func NetAddr2IPPort(addr net.Addr) (ip string, port int) {
+func NetAddr2IpPort(addr net.Addr) (ip string, port int) {
 	switch addr := addr.(type) {
 	case *net.UDPAddr:
 		ip = addr.IP.String()
