@@ -1,0 +1,6 @@
+github.com/YiuTerran/go-common/base v0.0.0-20220322031859-3fb5a22502e3 h1:FXEN7+DzDSyGrYZq1ZUpJEDuYvK8L2f70zFzrkeUj1Q=
+github.com/YiuTerran/go-common/base v0.0.0-20220322031859-3fb5a22502e3/go.mod h1:mt25bU36DY7Y/8xaubmzNJP4ikXrXOXa2vuFN6CSsfk=
+github.com/YiuTerran/go-common/network v0.0.0-20220322031859-3fb5a22502e3 h1:t+4FdQzbYoGbGj1m1aUZqtil5JEkm+vf5EIcUNdqgxA=
+github.com/YiuTerran/go-common/network v0.0.0-20220322031859-3fb5a22502e3/go.mod h1:6KDkJnLLW6l9RGWN/gCzcsLeWXu2ty7/KEteXf01Nf8=
+github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
+github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=

@@ -36,7 +36,7 @@ func (gate *TcpGate) Run(closeSig chan struct{}) {
 		tcpServer.MaxConnNum = gate.MaxConnNum
 		tcpServer.Parser = gate.BinaryParser
 		tcpServer.NewSessionFunc = func(conn *tcp.Conn) network.Session {
-			a := &agent{conn: conn, gate: gate}
+			a := &SessionAgentImpl{Conn: conn, Gate: gate}
 			if gate.RPCServer != nil {
 				gate.RPCServer.Go(AgentCreatedEvent, a)
 			}

@@ -102,7 +102,7 @@ func NewScriptRedisClient(client *redis.Client) *ScriptRedisClient {
 }
 
 func parseResult(resp any) (string, string, bool) {
-	r, ok := resp.([]interface{})
+	r, ok := resp.([]any)
 	if !ok || len(r) < 3 {
 		log.Error("redis lua return type error")
 	}

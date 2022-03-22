@@ -20,7 +20,7 @@
 ├── redis # redis通信，常用功能，以及分布式锁封装
 ├── sip # sip通信协议，sdp等功能集成
 ├── web # gin封装
-└── websocket # websocket对应于module的封装
+└── ws # websocket对应于module的封装
 ```
 
 为了方便使用和发布，所有模块共用同一个版本号。发布时先使用sed将所有`go.mod`中基础库的代码替换成要发布的版本号，然后commit并打上对应版本号的tag，最后push上去。

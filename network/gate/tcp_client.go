@@ -31,7 +31,7 @@ func (c *TcpClient) Run(closeSig chan struct{}) {
 			AutoReconnect: c.AutoReconnect,
 			Parser:        c.BinaryParser,
 			NewAgentFunc: func(conn *tcp.Conn) network.Session {
-				a := &agent{conn: conn, gate: c}
+				a := &SessionAgentImpl{Conn: conn, Gate: c}
 				if c.RPCServer != nil {
 					c.RPCServer.Go(AgentCreatedEvent, a, c.UserData)
 				}
