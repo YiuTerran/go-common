@@ -21,20 +21,29 @@ func profileName(prefix, suffix string) string {
 			now.Second()), suffix)
 }
 
+const (
+	CmdStartCpuProfile = "startCpu"
+	CmdStopCpuProfile  = "stopCpu"
+	CmdDumpGoRoutine   = "goroutine"
+	CmdDumpHeap        = "heap"
+	CmdDumpThread      = "thread"
+	CmdDumpBlock       = "block"
+)
+
 var (
 	nameSuffix = map[string]string{
-		"startCpu":  ".cpuprof",
-		"goroutine": ".gprof",
-		"heap":      ".hprof",
-		"thread":    ".tprof",
-		"block":     ".bprof",
+		CmdStartCpuProfile: ".cpuprof",
+		CmdDumpGoRoutine:   ".gprof",
+		CmdDumpHeap:        ".hprof",
+		CmdDumpThread:      ".tprof",
+		CmdDumpBlock:       ".bprof",
 	}
 )
 
 // PProfCmd 执行命令
 func PProfCmd(cmd string, params ...string) {
 	p := "/tmp"
-	if cmd != "stopCpu" && len(params) > 0 {
+	if cmd != CmdStopCpuProfile && len(params) > 0 {
 		p = params[0]
 	}
 	var (
@@ -42,7 +51,7 @@ func PProfCmd(cmd string, params ...string) {
 		err error
 		pp  *pprof.Profile
 	)
-	if cmd != "stopCpu" {
+	if cmd != CmdStopCpuProfile {
 		if suffix, ok := nameSuffix[cmd]; !ok {
 			log.Error("pprof cmd invalid:%s", cmd)
 			return
@@ -59,17 +68,17 @@ func PProfCmd(cmd string, params ...string) {
 	}
 	defer fp.Close()
 	switch cmd {
-	case "startCpu":
+	case CmdStartCpuProfile:
 		err = pprof.StartCPUProfile(fp)
-	case "stopCpu":
+	case CmdStopCpuProfile:
 		pprof.StopCPUProfile()
-	case "goroutine":
+	case CmdDumpGoRoutine:
 		pp = pprof.Lookup("goroutine")
-	case "heap":
+	case CmdDumpHeap:
 		pp = pprof.Lookup("heap")
-	case "thread":
+	case CmdDumpThread:
 		pp = pprof.Lookup("threadcreate")
-	case "block":
+	case CmdDumpBlock:
 		pp = pprof.Lookup("block")
 	default:
 		log.Error("unknown pprof command:%s", cmd)

@@ -13,8 +13,8 @@ func init() {
 	http.DefaultServeMux = http.NewServeMux()
 }
 
-// Handle adds standard pprof handlers to mux.
-func Handle(mux *http.ServeMux) {
+// handle adds standard pprof handlers to mux.
+func handle(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -22,16 +22,16 @@ func Handle(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 }
 
-// NewServeMux builds a ServeMux and populates it with standard pprof handlers.
-func NewServeMux() *http.ServeMux {
+// newServeMux builds a ServeMux and populates it with standard pprof handlers.
+func newServeMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	Handle(mux)
+	handle(mux)
 	return mux
 }
 
-// NewServer constructs a server at addr with the standard pprof handlers.
-func NewServer(addr string, cb func(mux *http.ServeMux)) *http.Server {
-	mux := NewServeMux()
+// newServer constructs a server at addr with the standard pprof handlers.
+func newServer(addr string, cb func(mux *http.ServeMux)) *http.Server {
+	mux := newServeMux()
 	if cb != nil {
 		cb(mux)
 	}
@@ -41,15 +41,15 @@ func NewServer(addr string, cb func(mux *http.ServeMux)) *http.Server {
 	}
 }
 
-// ListenAndServe starts a server at addr with standard pprof handlers.
-func ListenAndServe(addr string, cb func(mux *http.ServeMux)) error {
-	return NewServer(addr, cb).ListenAndServe()
+// listenAndServe starts a server at addr with standard pprof handlers.
+func listenAndServe(addr string, cb func(mux *http.ServeMux)) error {
+	return newServer(addr, cb).ListenAndServe()
 }
 
 // LaunchHttpServer set a standard pprof server at addr.
 // 如果需要自己增加debug method，在cb中添加映射即可
 func LaunchHttpServer(addr string, cb func(mux *http.ServeMux)) {
 	go func() {
-		log.Fatal(ListenAndServe(addr, cb))
+		log.Fatal(listenAndServe(addr, cb))
 	}()
 }
