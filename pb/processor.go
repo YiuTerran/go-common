@@ -1,4 +1,4 @@
-package protobuf
+package pb
 
 import (
 	"encoding/binary"
@@ -12,7 +12,7 @@ import (
 )
 
 // -------------------------
-// | id | protobuf message |
+// | id | pb message |
 // -------------------------
 type processor struct {
 	littleEndian bool
@@ -47,13 +47,13 @@ func NewProcessor(littleEndian bool) *processor {
 func (p *processor) Register(msg proto.Message, eventType uint16) {
 	msgType := reflect.TypeOf(msg)
 	if msgType == nil || msgType.Kind() != reflect.Ptr {
-		log.Fatal("protobuf message pointer required")
+		log.Fatal("pb message pointer required")
 	}
 	if _, ok := p.msgID[msgType]; ok {
 		log.Fatal("message %s is already registered", msgType)
 	}
 	if len(p.msgInfo) >= math.MaxUint16 {
-		log.Fatal("too many protobuf messages (max = %v)", math.MaxUint16)
+		log.Fatal("too many pb messages (max = %v)", math.MaxUint16)
 	}
 
 	i := new(msgInfoST)
@@ -109,7 +109,7 @@ func (p *processor) Route(msg any, userData any) error {
 		return nil
 	}
 
-	// protobuf
+	// pb
 	msgType := reflect.TypeOf(msg)
 	id, ok := p.msgID[msgType]
 	if !ok {
@@ -127,7 +127,7 @@ func (p *processor) Route(msg any, userData any) error {
 
 func (p *processor) Unmarshal(data []byte) (any, error) {
 	if len(data) < 2 {
-		return nil, errors.New("protobuf data too short")
+		return nil, errors.New("pb data too short")
 	}
 
 	// id

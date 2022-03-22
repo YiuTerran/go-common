@@ -5,7 +5,7 @@ use (
 	./db
 	./module
 	./network
-	./protobuf
+	./pb
 	./redisutil
 	./ginutil
 	./ws

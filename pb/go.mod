@@ -1,4 +1,4 @@
-module github.com/YiuTerran/go-common/protobuf
+module github.com/YiuTerran/go-common/pb
 
 go 1.18
 
