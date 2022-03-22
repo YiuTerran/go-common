@@ -84,6 +84,11 @@ func (lp *loggerProxy) EnableDebug(debug bool) {
 	}
 }
 
+// IsDebugEnabled 是否打开了debug
+func IsDebugEnabled() bool {
+	return proxy.zapLevel.Enabled(zapcore.DebugLevel)
+}
+
 type builder struct {
 	logger *loggerProxy
 }
