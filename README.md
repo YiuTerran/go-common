@@ -19,7 +19,7 @@
 ├── protobuf # protobuf对应于network中抽象解析器的一种实现
 ├── redis # redis通信，常用功能，以及分布式锁封装
 ├── sip # sip通信协议，sdp等功能集成
-├── web # gin封装
+├── ginutil # gin封装
 └── ws # websocket对应于module的封装
 ```
 

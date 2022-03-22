@@ -265,6 +265,11 @@ func Fatal(format string, a ...any) {
 	proxy.logger.Load().(*zap.SugaredLogger).Fatalf(format, a...)
 }
 
+// JsonDebug Json格式的debug
+func JsonDebug(msg string, fields ...zap.Field) {
+	proxy.tracker.Debug(msg, fields...)
+}
+
 //JsonInfo 会输出json格式的日志，json日志在单独的文件里
 func JsonInfo(msg string, fields ...zap.Field) {
 	proxy.tracker.Info(msg, fields...)

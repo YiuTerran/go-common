@@ -7,5 +7,6 @@ use (
 	./network
 	./protobuf
 	./redisutil
+	./ginutil
 	./ws
 )
