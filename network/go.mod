@@ -3,7 +3,7 @@ module github.com/YiuTerran/go-common/network
 go 1.18
 
 require (
-	github.com/YiuTerran/go-common/base v0.0.0-20220321071025-e2cd6da6e92b
+	github.com/YiuTerran/go-common/base v1.0.1
 	go.uber.org/atomic v1.9.0
 )
 

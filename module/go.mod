@@ -2,7 +2,7 @@ module github.com/YiuTerran/go-common/module
 
 go 1.18
 
-require github.com/YiuTerran/go-common/base v0.0.0-20220322063247-b2e8c7e1ef16
+require github.com/YiuTerran/go-common/base v1.0.1
 
 require (
 	go.uber.org/atomic v1.9.0 // indirect

@@ -3,7 +3,7 @@ module github.com/YiuTerran/go-common/redisutil
 go 1.18
 
 require (
-	github.com/YiuTerran/go-common/base v0.0.0-20220322063247-b2e8c7e1ef16
+	github.com/YiuTerran/go-common/base v1.0.1
 	github.com/go-redis/redis/v8 v8.11.5
 )
 

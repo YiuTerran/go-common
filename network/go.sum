@@ -1,6 +1,8 @@
 github.com/BurntSushi/toml v1.0.0 h1:dtDWrepsVPfW9H/4y7dDgFc2MBUSeJhlaDtK13CxFlU=
 github.com/YiuTerran/go-common/base v0.0.0-20220321071025-e2cd6da6e92b h1:+OhfXWZ8B1yge3BjnXtrU1hZUWnyDXtMYLsFuTCHaso=
 github.com/YiuTerran/go-common/base v0.0.0-20220321071025-e2cd6da6e92b/go.mod h1:ES+su+zmnV8YSSlS6ZhMeIYW8vlpDDDHBi/Z42BZuq4=
+github.com/YiuTerran/go-common/base v1.0.1 h1:0t2jZz4KALUkMsObxJ4b00/bg3BFnAUzpL2OnDv6Gtk=
+github.com/YiuTerran/go-common/base v1.0.1/go.mod h1:3DJSpblkdarZhFStzu+RRxJtTWp2FxiLXPEsTVVPXG0=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

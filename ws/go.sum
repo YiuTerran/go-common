@@ -1,6 +1,8 @@
 github.com/BurntSushi/toml v1.0.0 h1:dtDWrepsVPfW9H/4y7dDgFc2MBUSeJhlaDtK13CxFlU=
 github.com/YiuTerran/go-common/base v0.0.0-20220322063247-b2e8c7e1ef16 h1:c6OeQa0eDrUypdLRhvE9ZDPfZwEKfo/gVJzx2BubW78=
 github.com/YiuTerran/go-common/base v0.0.0-20220322063247-b2e8c7e1ef16/go.mod h1:mt25bU36DY7Y/8xaubmzNJP4ikXrXOXa2vuFN6CSsfk=
+github.com/YiuTerran/go-common/base v1.0.1 h1:0t2jZz4KALUkMsObxJ4b00/bg3BFnAUzpL2OnDv6Gtk=
+github.com/YiuTerran/go-common/base v1.0.1/go.mod h1:3DJSpblkdarZhFStzu+RRxJtTWp2FxiLXPEsTVVPXG0=
 github.com/YiuTerran/go-common/network v0.0.0-20220322063247-b2e8c7e1ef16 h1:/xdmG+/B5K0e15w9e9JAUgkG+glLYCQQ1Gmc3BxfoQ8=
 github.com/YiuTerran/go-common/network v0.0.0-20220322063247-b2e8c7e1ef16/go.mod h1:6KDkJnLLW6l9RGWN/gCzcsLeWXu2ty7/KEteXf01Nf8=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
