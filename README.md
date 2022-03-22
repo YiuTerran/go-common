@@ -19,14 +19,15 @@
 ├── redisutil # redis通信，常用功能，以及分布式锁封装
 ├── sip # sip通信协议，sdp等功能集成
 ├── ginutil # gin封装
-└── ws # websocket对应于module的封装
+└── ws # websocket对应于network/module的封装
 ```
 
-为了方便使用和发布，所有模块共用同一个版本号。发布时先使用sed将所有`go.mod`中基础库的代码替换成要发布的版本号，然后commit并打上对应版本号的tag，最后push上去。
+根据go语言的规定，当多个模块写在同一个repo里时，tag需要按`<module>/<version>`的格式进行打tag，如`base/v1.0.0`，所以各个模块拥有不同的版本号。
 
-平时调试则可以直接commit然后push，在依赖库里直接使用`go get -u`升级到`master`即可。
+平时开发可以直接commit然后push，在依赖库里直接使用`go get -u`升级到最新的`master`即可。最好不要在master分支直接开发。
+在发布时，需要将各个库的依赖改成`latest`的稳定版本。
 
-由于使用了workspace，所以本地编写代码时，即使`go.mod`中的依赖版本未更新，也会优先使用本地source. 如果最终push的时候忘了更新`go.mod`
-中依赖的版本，会出现本地能编译但是使用者无法编译的问题。因此在每次push之前，都要检查依赖基础库的版本问题。如果是java使用snapshot的方式，由于每次都自动更新到最新，就没这个顾虑。
+由于使用了workspace，所以本地编写代码时，即使`go.mod`中的依赖版本未更新，也会优先使用本地source. 如果最终push的时候忘了更新`go.mod`中依赖的版本，
+会出现本地能编译但是使用者无法编译的问题。因此在每次push之前，都要检查依赖基础库的版本问题。如果是java使用snapshot的方式，由于每次都自动更新到最新，就没这个顾虑。
 
 所以go mod的管理还是有一些问题的，需要谨慎push. 理论上这些模块使用单独的repo更好，但是由于很多模块里面的代码非常少，这样切来切去也很麻烦，所以目前采用类似java common的集中管理模式。
