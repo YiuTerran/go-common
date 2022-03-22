@@ -14,10 +14,9 @@
 ├── base  # 基础库，常用数据结构和utils，log模块
 ├── db # sqlx + sqlbuiler的封装
 ├── module # 模块封装，将所有功能统一抽象为模块，提供启动器和模块间类似rpc的相互通信机制
-├── nacos # 与nacos通信，配置中心和注册中心
 ├── network # tcp/udp对应module的封装，提供抽象解析器，提供json的一个范例实现
 ├── pb # protobuf对应于network中抽象解析器的一种实现
-├── redis # redis通信，常用功能，以及分布式锁封装
+├── redisutil # redis通信，常用功能，以及分布式锁封装
 ├── sip # sip通信协议，sdp等功能集成
 ├── ginutil # gin封装
 └── ws # websocket对应于module的封装
@@ -27,6 +26,7 @@
 
 平时调试则可以直接commit然后push，在依赖库里直接使用`go get -u`升级到`master`即可。
 
-由于使用了workspace，所以本地编写代码时，即使`go.mod`中的依赖版本未更新，也会优先使用本地source. 如果最终push的时候忘了更新`go.mod`中依赖的版本，会出现本地能编译但是使用者无法编译的问题。因此在每次push之前，都要检查依赖基础库的版本问题。如果是java使用snapshot的方式，由于每次都自动更新到最新，就没这个顾虑。
+由于使用了workspace，所以本地编写代码时，即使`go.mod`中的依赖版本未更新，也会优先使用本地source. 如果最终push的时候忘了更新`go.mod`
+中依赖的版本，会出现本地能编译但是使用者无法编译的问题。因此在每次push之前，都要检查依赖基础库的版本问题。如果是java使用snapshot的方式，由于每次都自动更新到最新，就没这个顾虑。
 
 所以go mod的管理还是有一些问题的，需要谨慎push. 理论上这些模块使用单独的repo更好，但是由于很多模块里面的代码非常少，这样切来切去也很麻烦，所以目前采用类似java common的集中管理模式。
