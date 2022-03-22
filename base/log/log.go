@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -46,8 +47,7 @@ const (
 
 var (
 	//Builder 初始化Logger的builder，由于配置项太多
-	Builder = &builder{logger: &loggerProxy{}}
-
+	Builder      = &builder{logger: &loggerProxy{}}
 	levelMapping = map[Level]zapcore.Level{
 		LevelDebug: zap.DebugLevel,
 		LevelInfo:  zap.InfoLevel,
@@ -56,6 +56,10 @@ var (
 	}
 	proxy *loggerProxy
 	once  sync.Once
+	//cbs的读写锁
+	debugLock sync.RWMutex
+	//debug开关切换的callback
+	cbs map[reflect.Value]func(bool)
 )
 
 type loggerProxy struct {
@@ -74,6 +78,25 @@ type loggerProxy struct {
 	tracker  *zap.Logger
 }
 
+// RegisterDebugSwitchCallback 注册debug开关切换的回调
+//注意某些组件并不能在运行时修改debug模式
+func RegisterDebugSwitchCallback(cb func(debug bool)) {
+	debugLock.Lock()
+	cbs[reflect.ValueOf(cb)] = cb
+	debugLock.Unlock()
+	cb(IsDebugEnabled())
+}
+
+// UnRegisterDebugSwitchCallback 移除debug开关的回调
+//会将cb重置为debug为false的状态
+func UnRegisterDebugSwitchCallback(cb func(debug bool)) {
+	cb(false)
+	debugLock.Lock()
+	delete(cbs, reflect.ValueOf(cb))
+	debugLock.Unlock()
+}
+
+// EnableDebug 切换debug状态
 func (lp *loggerProxy) EnableDebug(debug bool) {
 	if debug {
 		lp.zapLevel.SetLevel(zapcore.DebugLevel)
@@ -82,6 +105,11 @@ func (lp *loggerProxy) EnableDebug(debug bool) {
 		lp.zapLevel.SetLevel(zapcore.InfoLevel)
 		lp.logger.Store(lp.nLogger)
 	}
+	debugLock.RLock()
+	for _, cb := range cbs {
+		cb(debug)
+	}
+	debugLock.RUnlock()
 }
 
 // IsDebugEnabled 是否打开了debug

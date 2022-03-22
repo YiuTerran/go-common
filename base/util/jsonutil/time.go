@@ -34,7 +34,7 @@ func (t Time) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + t.String() + `"`), nil
 }
 
-//自定义序列化
+// Value 自定义序列化, sql使用
 func (t *Time) Value() (driver.Value, error) {
 	if t == nil {
 		return nil, nil
@@ -42,6 +42,7 @@ func (t *Time) Value() (driver.Value, error) {
 	return t.Time, nil
 }
 
+// Scan 自定义反序列化，sql使用
 func (t *Time) Scan(src any) error {
 	if src == nil {
 		return nil

@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-func NetAddr2IPPort(addr net.Addr) (ip string, port int) {
+func NetAddr2IpPort(addr net.Addr) (ip string, port int) {
 	switch addr := addr.(type) {
 	case *net.UDPAddr:
 		ip = addr.IP.String()
@@ -22,6 +22,7 @@ func NetAddr2IPPort(addr net.Addr) (ip string, port int) {
 	return
 }
 
+// GetOutboundIP 获取外网ip
 func GetOutboundIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -33,6 +34,7 @@ func GetOutboundIP() net.IP {
 	return localAddr.IP
 }
 
+// IsInternetOK 判断有没有外网
 func IsInternetOK() (ok bool) {
 	_, err := http.Get("http://www.google.cn/generate_204")
 	if err != nil {
@@ -41,6 +43,7 @@ func IsInternetOK() (ok bool) {
 	return true
 }
 
+// GetAllIP 获取所有网卡的ip
 func GetAllIP() []net.IP {
 	ifaces, err := net.Interfaces()
 	if err != nil {
