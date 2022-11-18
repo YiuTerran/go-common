@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/nacos-group/nacos-sdk-go v1.1.2
 	github.com/spf13/viper v1.13.0
-	github.com/YiuTerran/go-common/base v1.4.12
+	github.com/YiuTerran/go-common/base v1.5.0
 )
 
 require (

@@ -8,7 +8,7 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/samber/lo v1.28.0
 	github.com/stretchr/testify v1.8.0
-	github.com/YiuTerran/go-common/base v1.4.12
+	github.com/YiuTerran/go-common/base v1.5.0
 	go.uber.org/atomic v1.10.0
 )
 

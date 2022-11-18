@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/prometheus/client_golang v1.12.2
-	github.com/YiuTerran/go-common/base v1.4.12
+	github.com/YiuTerran/go-common/base v1.5.0
 )
 
 require (

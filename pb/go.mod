@@ -3,7 +3,7 @@ module github.com/YiuTerran/go-common/pb
 go 1.18
 
 require (
-	github.com/YiuTerran/go-common/base v1.4.12
+	github.com/YiuTerran/go-common/base v1.5.0
 	google.golang.org/protobuf v1.28.0
 )
 
