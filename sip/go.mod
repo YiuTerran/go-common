@@ -3,12 +3,12 @@ module github.com/YiuTerran/go-common/sip
 go 1.18
 
 require (
+	github.com/YiuTerran/go-common/base v1.5.0
 	github.com/google/uuid v1.3.0
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.19.0
 	github.com/samber/lo v1.28.0
 	github.com/stretchr/testify v1.8.0
-	github.com/YiuTerran/go-common/base v1.5.0
 	go.uber.org/atomic v1.10.0
 )
 
