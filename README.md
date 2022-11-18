@@ -37,19 +37,3 @@
 
 为了方便发布版本，在根目录有一个`release.py`的Python脚本，可以用来发布版本并自动更新依赖该版本的其他模块，然后这些模块也会发布一个新版本。
 建议不要频繁发布版本，用`@master`直接拉取最新代码调试的差不多了再更新。或者也可以在本地go.mod里面使用`replace`到本地进行调试，确认没问题之后再推送到仓库。
-
-## 配置指南
-
-由于使用了私有仓库，需要在本地做一系列配置才能正常使用。windows/*nix的配置方式是一样的：
-
-1. 配置环境变量，设置`GOPRIVATE`为`gitlab.xingshicloud.com`，即公司gitlab地址。
-
-2. 登陆gitlab，点击右上角头像，选择`Preferences`-`Access Token(访问令牌)`，右边权限全部勾选，上面输入一个名称，点击创建一个访问令牌，复制这个令牌的值。
-
-3. 在`~/.netrc`（没有就新建）中加入一行：
-
-```bash
-machine gitlab.xingshicloud.com login XXX password YYY
-```
-
-将XXX替换成你的gitlab登录名，YYY换成刚才复制的令牌即可。
