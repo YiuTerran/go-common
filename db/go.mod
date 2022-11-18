@@ -1,4 +1,4 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/db
+module github.com/YiuTerran/go-common/db
 
 go 1.18
 

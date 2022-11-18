@@ -1,4 +1,4 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/redisutil
+module github.com/YiuTerran/go-common/redisutil
 
 go 1.18
 

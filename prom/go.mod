@@ -1,11 +1,11 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/prom
+module github.com/YiuTerran/go-common/prom
 
 go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/prometheus/client_golang v1.12.2
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10
+	github.com/YiuTerran/go-common/base v1.4.12
 )
 
 require (

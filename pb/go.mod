@@ -1,9 +1,9 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/pb
+module github.com/YiuTerran/go-common/pb
 
 go 1.18
 
 require (
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10
+	github.com/YiuTerran/go-common/base v1.4.10
 	google.golang.org/protobuf v1.28.0
 )
 

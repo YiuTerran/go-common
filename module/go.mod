@@ -1,10 +1,10 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/module
+module github.com/YiuTerran/go-common/module
 
 go 1.18
 
 require (
 	github.com/samber/lo v1.28.0
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.11
+	github.com/YiuTerran/go-common/base v1.4.12
 )
 
 require (

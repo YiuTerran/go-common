@@ -1,11 +1,11 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/nacos
+module github.com/YiuTerran/go-common/nacos
 
 go 1.18
 
 require (
 	github.com/nacos-group/nacos-sdk-go v1.1.2
 	github.com/spf13/viper v1.13.0
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10
+	github.com/YiuTerran/go-common/base v1.4.12
 )
 
 require (

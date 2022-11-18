@@ -1,11 +1,11 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/ginutil
+module github.com/YiuTerran/go-common/ginutil
 
 go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/samber/lo v1.28.0
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10
+	github.com/YiuTerran/go-common/base v1.4.12
 	go.uber.org/zap v1.23.0
 )
 

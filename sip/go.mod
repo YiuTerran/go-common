@@ -1,4 +1,4 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/sip
+module github.com/YiuTerran/go-common/sip
 
 go 1.18
 
@@ -8,7 +8,7 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/samber/lo v1.28.0
 	github.com/stretchr/testify v1.8.0
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10
+	github.com/YiuTerran/go-common/base v1.4.12
 	go.uber.org/atomic v1.10.0
 )
 

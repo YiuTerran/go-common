@@ -15,10 +15,10 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
 github.com/thoas/go-funk v0.9.1 h1:O549iLZqPpTUQ10ykd26sZhzD+rmR5pWhuElrhbC20M=
-gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10 h1:0kSuOOgDuWjk9gFvYxV4trreKKse7i7RXoelZSdKDTY=
-gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10/go.mod h1:7yYJRSjh0N5yNNAY221wdeQmh45fecvqOQOAaD+A0GM=
-gitlab.xingshicloud.com/SmartInfrastructure/go-common/network v0.0.0-20220323025554-e6da4b62e3bf h1:oFHcaUoAeGBf1MrnHdBlAIL32y9WStkN8ZYApPd98S0=
-gitlab.xingshicloud.com/SmartInfrastructure/go-common/network v0.0.0-20220323025554-e6da4b62e3bf/go.mod h1:v+LP2vs1E13ZXF/94vYHuGeWkCbg1+UnLK1uVnvtwuw=
+github.com/YiuTerran/go-common/base v1.4.10 h1:0kSuOOgDuWjk9gFvYxV4trreKKse7i7RXoelZSdKDTY=
+github.com/YiuTerran/go-common/base v1.4.10/go.mod h1:7yYJRSjh0N5yNNAY221wdeQmh45fecvqOQOAaD+A0GM=
+github.com/YiuTerran/go-common/network v0.0.0-20220323025554-e6da4b62e3bf h1:oFHcaUoAeGBf1MrnHdBlAIL32y9WStkN8ZYApPd98S0=
+github.com/YiuTerran/go-common/network v0.0.0-20220323025554-e6da4b62e3bf/go.mod h1:v+LP2vs1E13ZXF/94vYHuGeWkCbg1+UnLK1uVnvtwuw=
 go.uber.org/atomic v1.7.0/go.mod h1:fEN4uk6kAWBTFdckzkM89CLk9XfWZrxpCo0nPH17wJc=
 go.uber.org/atomic v1.10.0 h1:9qC72Qh0+3MqyJbAn8YU5xVq1frD8bn3JtD2oXtafVQ=
 go.uber.org/atomic v1.10.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=

@@ -1,9 +1,9 @@
-module gitlab.xingshicloud.com/SmartInfrastructure/go-common/network
+module github.com/YiuTerran/go-common/network
 
 go 1.18
 
 require (
-	gitlab.xingshicloud.com/SmartInfrastructure/go-common/base v1.4.10
+	github.com/YiuTerran/go-common/base v1.4.10
 	go.uber.org/atomic v1.10.0
 )
 
