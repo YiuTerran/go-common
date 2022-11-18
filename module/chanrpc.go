@@ -9,7 +9,7 @@ import (
 
 const initBufferSize = 2048
 
-//RpcServer one rpcServer per goroutine (goroutine not safe)
+// RpcServer one rpcServer per goroutine (goroutine not safe)
 // one rpcClient per goroutine (goroutine not safe)
 type RpcServer struct {
 	// id -> function
@@ -66,7 +66,8 @@ func assert(i any) []any {
 }
 
 // Register 注册命令回调.
-//you must call the function before calling CreateClient and CallbackChn
+// NOTE: 这些回调函数运行在同一个协程里，不要在回调函数中进行阻塞
+// you must call the function before calling CreateClient and CallbackChn
 func (s *RpcServer) Register(id any, f any) {
 	switch f.(type) {
 	case func([]any):

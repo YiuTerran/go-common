@@ -13,12 +13,15 @@
 ```bash
 ├── base  # 基础库，常用数据结构和utils，log模块
 ├── db # sqlx + sqlbuiler的封装
+├── ginutil # gin封装
 ├── module # 模块封装，将所有功能统一抽象为模块，提供启动器和模块间类似rpc的相互通信机制
+├── nacos # 集成nacos和viper，配置管理和服务注册
 ├── network # tcp/udp对应module的封装，提供抽象解析器，提供json的一个范例实现
 ├── pb # protobuf对应于network中抽象解析器的一种实现
+├── prom # 普罗米修斯的集成
 ├── redisutil # redis通信，常用功能，以及分布式锁封装
-├── sip # sip通信协议，sdp等功能集成
-├── ginutil # gin封装
+├── sdp # sdp格式，兼容国标
+├── sip # sip通信协议，tcp/udp的transport
 └── ws # websocket对应于network/module的封装
 ```
 
@@ -31,3 +34,22 @@
 会出现本地能编译但是使用者无法编译的问题。因此在每次push之前，都要检查依赖基础库的版本问题。如果是java使用snapshot的方式，由于每次都自动更新到最新，就没这个顾虑。
 
 所以go mod的管理还是有一些问题的，需要谨慎push. 理论上这些模块使用单独的repo更好，但是由于很多模块里面的代码非常少，这样切来切去也很麻烦，所以目前采用类似java common的集中管理模式。
+
+为了方便发布版本，在根目录有一个`release.py`的Python脚本，可以用来发布版本并自动更新依赖该版本的其他模块，然后这些模块也会发布一个新版本。
+建议不要频繁发布版本，用`@master`直接拉取最新代码调试的差不多了再更新。或者也可以在本地go.mod里面使用`replace`到本地进行调试，确认没问题之后再推送到仓库。
+
+## 配置指南
+
+由于使用了私有仓库，需要在本地做一系列配置才能正常使用。windows/*nix的配置方式是一样的：
+
+1. 配置环境变量，设置`GOPRIVATE`为`gitlab.xingshicloud.com`，即公司gitlab地址。
+
+2. 登陆gitlab，点击右上角头像，选择`Preferences`-`Access Token(访问令牌)`，右边权限全部勾选，上面输入一个名称，点击创建一个访问令牌，复制这个令牌的值。
+
+3. 在`~/.netrc`（没有就新建）中加入一行：
+
+```bash
+machine gitlab.xingshicloud.com login XXX password YYY
+```
+
+将XXX替换成你的gitlab登录名，YYY换成刚才复制的令牌即可。

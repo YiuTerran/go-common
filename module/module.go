@@ -1,6 +1,9 @@
 package module
 
-import "github.com/YiuTerran/go-common/base/structs/rpc"
+import (
+	"context"
+	"github.com/YiuTerran/go-common/base/structs/rpc"
+)
 
 //Module 是抽象的运行模块
 type Module interface {
@@ -14,10 +17,9 @@ type Module interface {
 	Tags() []string
 	// OnDestroy 模块销毁前的回调
 	OnDestroy()
-	// Run 主循环，closeSig是退出信号
-	// 可以使用GoroutineMixIn的Run作为默认循环
-	Run(closeSig chan struct{})
-	// RpcServer 用于支持模块间通信
+	// Run 主循环，请实现一个阻塞函数，一般是一个死循环
+	Run(ctx context.Context)
+	// RPC 用于支持模块间通信
 	// 可以使用GoroutineMixIn作为默认实现
-	RpcServer() rpc.IServer
+	RPC() rpc.IServer
 }

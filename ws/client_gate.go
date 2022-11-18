@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"github.com/YiuTerran/go-common/base/structs/rpc"
 	"github.com/YiuTerran/go-common/network"
 	"github.com/YiuTerran/go-common/network/gate"
@@ -31,7 +32,7 @@ func (cg *ClientGate) AgentChanRPC() rpc.IServer {
 	return cg.RPCServer
 }
 
-func (cg *ClientGate) Run(closeSig chan struct{}) {
+func (cg *ClientGate) Run(ctx context.Context) {
 	var wsClient *Client
 	if cg.Server != "" {
 		wsClient = &Client{
@@ -53,7 +54,7 @@ func (cg *ClientGate) Run(closeSig chan struct{}) {
 	if wsClient != nil {
 		wsClient.Start()
 	}
-	<-closeSig
+	<-ctx.Done()
 	if wsClient != nil {
 		wsClient.Close()
 	}

@@ -17,3 +17,8 @@ func TestIsInternetOK(t *testing.T) {
 func TestGetExternalIP(t *testing.T) {
 	fmt.Println(GetExternalIP())
 }
+
+func TestFilterSelfIP(t *testing.T) {
+	ip, err := FilterSelfIP("172.16")
+	fmt.Println(ip, err)
+}

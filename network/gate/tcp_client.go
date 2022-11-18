@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"context"
 	"github.com/YiuTerran/go-common/base/structs/rpc"
 	"github.com/YiuTerran/go-common/network"
 	"github.com/YiuTerran/go-common/network/tcp"
@@ -23,7 +24,7 @@ func (c *TcpClient) AgentChanRPC() rpc.IServer {
 	return c.RPCServer
 }
 
-func (c *TcpClient) Run(closeSig chan struct{}) {
+func (c *TcpClient) Run(ctx context.Context) {
 	var tcpClient *tcp.Client
 	if c.Server != "" {
 		tcpClient = &tcp.Client{
@@ -42,7 +43,7 @@ func (c *TcpClient) Run(closeSig chan struct{}) {
 	if tcpClient != nil {
 		tcpClient.Start()
 	}
-	<-closeSig
+	<-ctx.Done()
 	if tcpClient != nil {
 		tcpClient.Close()
 	}

@@ -27,6 +27,17 @@ var (
 		NotAllowed:   403,
 		AuthError:    401,
 	}
+	ErrorCn = map[int]string{
+		UnknownError:    "未知错误",
+		ClientError:     "客户端错误",
+		ThirdPartyError: "第三方平台错误",
+		ParamError:      "参数错误",
+		NotAllowed:      "权限不足",
+		TokenExpired:    "认证过期，请重新登录",
+		AlreadyExist:    "项目已存在",
+		NotExist:        "项目已被删除",
+		AuthError:       "认证失败",
+	}
 )
 
 func GetHttpStatus(status int) int {

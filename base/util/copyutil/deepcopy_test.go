@@ -1,7 +1,6 @@
-package deepcopy
+package copyutil
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -19,10 +18,6 @@ type testCopy struct {
 	Public  string
 	TP      testPointer
 	tp      *testPointer
-}
-
-func (t testCopy) String() string {
-	return fmt.Sprintf(`private:%d, Public:%s, TP:%+v, tp:%+v`, t.private, t.Public, t.TP, *t.tp)
 }
 
 func TestCopy(t *testing.T) {

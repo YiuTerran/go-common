@@ -12,7 +12,7 @@ import (
   *  @date 2022/03/21 11:06
 **/
 
-//Action 表示模块的变化
+// Action 表示模块的变化
 type Action int
 
 const (
@@ -23,29 +23,32 @@ const (
 )
 
 var (
-	closeChannel    = make(chan os.Signal, 1)
-	internalChannel = make(chan int, 1)
+	serverCloseChn  = make(chan os.Signal, 1)
+	serverReloadChn = make(chan int, 1)
 
 	quitSig   = 1
 	reloadSig = 2
+
+	beforeCloseModuleCb func()
+	afterInitModuleCb   func()
 )
 
 type GetModuleActions func() map[Action][]module.Module
 
-// CloseServer 手动关闭服务
-func CloseServer() {
-	closeChannel <- os.Kill
+// Close 手动关闭服务
+func Close() {
+	serverCloseChn <- os.Kill
 }
 
-// ReloadServer 重载所有模块
-func ReloadServer() {
-	internalChannel <- reloadSig
+// Reload 重载所有模块
+func Reload() {
+	serverReloadChn <- reloadSig
 }
 
-//热加载
+// 热加载
 func hotReload(getMods GetModuleActions) {
 	for {
-		sig := <-internalChannel
+		sig := <-serverReloadChn
 		if sig == quitSig {
 			break
 		} else if sig == reloadSig {
@@ -54,36 +57,51 @@ func hotReload(getMods GetModuleActions) {
 	}
 }
 
+// BeforeCloseModule 服务关闭所有模块之前的hook
+// 一般需要在注册中心先取消注册
+func BeforeCloseModule(cb func()) {
+	beforeCloseModuleCb = cb
+}
+
+// AfterInitModule 初始化所有module之后的hook
+// 一般需要手动注册到注册中心
+func AfterInitModule(cb func()) {
+	afterInitModuleCb = cb
+}
+
+func waitClose() {
+	//关闭&&重启
+	signal.Notify(serverCloseChn, os.Interrupt, os.Kill)
+	<-serverCloseChn
+	log.Info("server closing...")
+	signal.Stop(serverCloseChn)
+	serverReloadChn <- quitSig
+	if beforeCloseModuleCb != nil {
+		beforeCloseModuleCb()
+	}
+	destroyAll()
+	log.Info("all module closed")
+}
+
 // HotRun 开启模块热加载特性
-// beforeClose是在所有模块销毁前执行的
-func HotRun(getMods GetModuleActions, beforeClose func()) {
-	log.Info("Server starting up...")
+func HotRun(getMods GetModuleActions) {
+	log.Info("server starting up...")
 	// mod
 	reloadByAction(getMods())
 	//注册热加载信号
 	go hotReload(getMods)
-	//关闭&&重启
-	signal.Notify(closeChannel, os.Interrupt, os.Kill)
-	<-closeChannel
-	internalChannel <- quitSig
-	if beforeClose != nil {
-		beforeClose()
+	if afterInitModuleCb != nil {
+		afterInitModuleCb()
 	}
-	signal.Stop(closeChannel)
-	destroyAll()
-	log.Info("Server closing down...")
+	waitClose()
 }
 
-// StaticRun 模块以静态模式加载（关闭热加载特性）
-// beforeClose是在所有模块销毁前执行的
-func StaticRun(mods []module.Module, beforeClose func()) {
-	log.Info("Server starting up...")
+// Run 模块以静态模式加载（关闭热加载特性）
+func Run(mods ...module.Module) {
+	log.Info("server starting up...")
 	staticLoadModules(mods)
-	signal.Notify(closeChannel, os.Interrupt, os.Kill)
-	<-closeChannel
-	if beforeClose != nil {
-		beforeClose()
+	if afterInitModuleCb != nil {
+		afterInitModuleCb()
 	}
-	destroyAll()
-	log.Info("Server closing down...")
+	waitClose()
 }

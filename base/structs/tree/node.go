@@ -72,7 +72,7 @@ type levelNode[T comparable] struct {
 	level int
 }
 
-//LevelDownTraversal 从上到下层级遍历
+// LevelDownTraversal 从上到下层级遍历
 func LevelDownTraversal[T comparable](tree *Tree[T], f func(*Node[T], int)) {
 	if tree == nil || tree.Root == nil {
 		return

@@ -2,12 +2,32 @@ package netutil
 
 import (
 	"bytes"
+	"errors"
 	"github.com/YiuTerran/go-common/base/util/httputil"
 	"math/big"
 	"net"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
+const (
+	TypeDomain = 0
+	TypeIPV4   = 4
+	TypeIPV6   = 6
+
+	regexIPV6   = `^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$`
+	regexIPV4   = `^(((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4})`
+	regexDomain = `^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$`
+)
+
+var (
+	reV6, _     = regexp.Compile(regexIPV6)
+	reV4, _     = regexp.Compile(regexIPV4)
+	reDomain, _ = regexp.Compile(regexDomain)
+)
+
+// NetAddr2IpPort Golang内置网络地址转为常用的ip端口形式
 func NetAddr2IpPort(addr net.Addr) (ip string, port int) {
 	switch addr := addr.(type) {
 	case *net.UDPAddr:
@@ -23,10 +43,7 @@ func NetAddr2IpPort(addr net.Addr) (ip string, port int) {
 // IsInternetOK 网络是否正常
 func IsInternetOK() (ok bool) {
 	_, err := http.Get("https://www.google.cn/generate_204")
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // GetAllIP 获取所有网卡的ip
@@ -36,15 +53,27 @@ func GetAllIP() []net.IP {
 		return nil
 	}
 	result := make([]net.IP, 0, 1)
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue // interface down
+		}
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue // loopback interface
+		}
+		addrs, err := iface.Addrs()
 		if err != nil {
 			continue
 		}
 		for _, addr := range addrs {
-			ip, ok := addr.(*net.IPNet)
-			if ok && !ip.IP.IsLoopback() && ip.IP.To4() != nil {
-				result = append(result, ip.IP)
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip != nil && !ip.IsLoopback() && ip.To4() != nil {
+				result = append(result, ip)
 			}
 		}
 	}
@@ -109,9 +138,42 @@ func IpBetween(from net.IP, to net.IP, test net.IP) bool {
 
 // GetExternalIP 获取公网IP
 func GetExternalIP() string {
-	r, err := httputil.Request().Get("https://myexternalip.com/raw")
+	r, err := httputil.NewRequest().Get("https://myexternalip.com/raw")
 	if err != nil || !r.IsSuccess() {
 		return ""
 	}
 	return string(r.Bytes())
+}
+
+func FilterSelfIP(prefix string) (net.IP, error) {
+	ips := GetAllIP()
+	if len(ips) == 0 {
+		return nil, errors.New("can't resolve ip")
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() {
+			continue
+		}
+		if prefix != "" {
+			if strings.HasPrefix(ip.String(), prefix) {
+				return ip, nil
+			}
+		} else if ip.IsPrivate() {
+			return ip, nil
+		}
+	}
+	return ips[0], errors.New("can't get specified ip")
+}
+
+func GuessAddrType(addr string) int {
+	bs := []byte(addr)
+	if reV4.Match(bs) {
+		return TypeIPV4
+	} else if reV6.Match(bs) {
+		return TypeIPV6
+	} else if reDomain.Match(bs) {
+		return TypeDomain
+	} else {
+		return -1
+	}
 }

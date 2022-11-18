@@ -2,6 +2,7 @@ package udp
 
 import (
 	"github.com/YiuTerran/go-common/base/log"
+	"github.com/YiuTerran/go-common/base/structs/chanx"
 	"github.com/YiuTerran/go-common/base/util/byteutil"
 	"github.com/YiuTerran/go-common/network"
 	"net"
@@ -20,14 +21,14 @@ type MsgInfo struct {
 }
 
 type Server struct {
-	Addr       string
-	BufferSize int
-	Processor  network.MsgProcessor
-	MaxTry     int
+	Addr      string
+	Processor network.MsgProcessor
+	//发送失败后尝试次数
+	FailTry int
 
 	closeSig  chan struct{}
-	readChan  chan *MsgInfo
-	writeChan chan *MsgInfo
+	readChan  *chanx.UnboundedChan[*MsgInfo]
+	writeChan *chanx.UnboundedChan[*MsgInfo]
 	conn      net.PacketConn
 	wg        *sync.WaitGroup
 }
@@ -37,15 +38,12 @@ func (server *Server) Start() {
 	if err != nil {
 		log.Fatal("fail to bind udp port:%v", err)
 	}
-	if server.MaxTry <= 0 {
-		server.MaxTry = 3
-	}
-	if server.BufferSize <= 0 {
-		server.BufferSize = MaxPacketSize
+	if server.FailTry < 0 {
+		server.FailTry = 0
 	}
 	server.closeSig = make(chan struct{}, 1)
-	server.writeChan = make(chan *MsgInfo, server.BufferSize)
-	server.readChan = make(chan *MsgInfo, server.BufferSize)
+	server.writeChan = chanx.NewUnboundedChan[*MsgInfo](MaxPacketSize)
+	server.readChan = chanx.NewUnboundedChan[*MsgInfo](MaxPacketSize)
 	server.conn = conn
 	server.wg = &sync.WaitGroup{}
 	go server.listen()
@@ -55,13 +53,10 @@ func (server *Server) Start() {
 }
 
 func (server *Server) WriteMsg(msg any, addr net.Addr) error {
-	if len(server.writeChan) == cap(server.writeChan) {
-		return ChanFullError
-	}
 	if bs, err := server.Processor.Marshal(msg); err != nil {
 		return err
 	} else {
-		server.writeChan <- &MsgInfo{
+		server.writeChan.In <- &MsgInfo{
 			Addr: addr,
 			Msg:  byteutil.MergeBytes(bs),
 		}
@@ -75,12 +70,12 @@ func (server *Server) doWrite() {
 			log.PanicStack("", r)
 		}
 	}()
-	for b := range server.writeChan {
+	for b := range server.writeChan.Out {
 		if b == nil {
 			break
 		}
-		count := server.MaxTry
-		for count > 0 {
+		count := server.FailTry
+		for count >= 0 {
 			_, err := server.conn.WriteTo(b.Msg, b.Addr)
 			if err != nil {
 				log.Error("fail to write udp chan:%+v", err)
@@ -99,7 +94,7 @@ func (server *Server) doRead() {
 			log.PanicStack("", r)
 		}
 	}()
-	for b := range server.readChan {
+	for b := range server.readChan.Out {
 		if b == nil {
 			break
 		}
@@ -129,8 +124,8 @@ func (server *Server) listen() {
 	for {
 		select {
 		case <-server.closeSig:
-			server.writeChan <- nil
-			server.readChan <- nil
+			server.writeChan.In <- nil
+			server.readChan.In <- nil
 			server.wg.Done()
 			return
 		default:
@@ -143,11 +138,7 @@ func (server *Server) listen() {
 				}
 				continue
 			}
-			if len(server.readChan) == cap(server.readChan) {
-				log.Error("doRead chan full, drop udp msg from %v", addr)
-				continue
-			}
-			server.readChan <- &MsgInfo{
+			server.readChan.In <- &MsgInfo{
 				Addr: addr,
 				Msg:  buffer[:n],
 			}

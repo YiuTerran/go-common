@@ -22,11 +22,8 @@ type RingBuffer[T any] struct {
 }
 
 func NewRingBuffer[T any](initialSize int) *RingBuffer[T] {
-	if initialSize <= 0 {
-		panic("initial size must be great than zero")
-	}
 	// initial size must >= 2
-	if initialSize == 1 {
+	if initialSize <= 1 {
 		initialSize = 2
 	}
 

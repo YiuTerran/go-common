@@ -1,0 +1,15 @@
+application:
+  name: "hello" # dataId为尾部添加$ENV.yml
+nacos:
+  server: # 可以添加多个server
+    - { ipAddr: "localhost", port: 8848 }
+  client: # 参考ClientConfig的配置，这里只列出必须的配置
+    username: "nacos"
+    password: "nacos"
+    namespaceId: "" # public可以填空字符串
+  instance: # 当前实例配置
+    ip: "" # 默认会使用内网ip地址，可以使用具体ip或者前缀匹配，如192.168或者10.0
+    port: 8080 # 默认8080
+    weight: 0 # 权重
+    clusterName: "" # 默认DEFAULT
+    groupName: "" # 默认DEFAULT_GROUP

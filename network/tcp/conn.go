@@ -18,7 +18,7 @@ type Conn struct {
 func newConn(conn net.Conn, parser IParser) *Conn {
 	tcpConn := new(Conn)
 	tcpConn.conn = conn
-	tcpConn.writeChan = chanx.NewUnboundedChan[[]byte]()
+	tcpConn.writeChan = chanx.NewUnboundedChan[[]byte](100)
 	tcpConn.parser = parser
 
 	go func() {
@@ -26,7 +26,6 @@ func newConn(conn net.Conn, parser IParser) *Conn {
 			if b == nil {
 				break
 			}
-
 			_, err := conn.Write(b)
 			if err != nil {
 				log.Error("fail to write tcp chan:%+v", err)

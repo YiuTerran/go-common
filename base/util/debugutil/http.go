@@ -1,12 +1,14 @@
 package debugutil
 
 import (
-	"log"
+	"errors"
+	"github.com/YiuTerran/go-common/base/log"
 	"net/http"
 	"net/http/pprof"
 )
 
-//专门用来debug的不对外暴露的API
+// 专门用来debug的不对外暴露的API
+// 如果服务用了gin，建议使用ginutil中的版本，因为这里要多占用一个端口
 
 // init disables default handlers registered by importing net/http/pprof.
 func init() {
@@ -49,7 +51,12 @@ func listenAndServe(addr string, cb func(mux *http.ServeMux)) error {
 // LaunchHttpServer set a standard pprof server at addr.
 // 如果需要自己增加debug method，在cb中添加映射即可
 func LaunchHttpServer(addr string, cb func(mux *http.ServeMux)) {
+	log.Info("start handle pprof http request @%s", addr)
 	go func() {
-		log.Fatal(listenAndServe(addr, cb))
+		if err := listenAndServe(addr, cb); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				log.Error("fail to start http server:%s", err)
+			}
+		}
 	}()
 }

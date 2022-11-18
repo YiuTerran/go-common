@@ -2,50 +2,85 @@ package numutil
 
 import (
 	"fmt"
+	"github.com/samber/lo"
 	"github.com/YiuTerran/go-common/base/constraint"
 	"reflect"
 	"sort"
+	"strconv"
 )
 
-//ConvertToInt guess Num format and convert to Int
-func ConvertToInt(temp any) (int, error) {
-	switch t := temp.(type) {
-	case int:
-		return t, nil
+// ConvertToInt64 guess Num format and convert to Int64
+func ConvertToInt64(temp any) (int64, error) {
+	switch temp.(type) {
+	case int, int8, int16, int32, int64:
+		return reflect.ValueOf(temp).Int(), nil
+	case uint, uint8, uint16, uint32, uint64:
+		//注意这里是可能溢出的，谨慎处理
+		return int64(reflect.ValueOf(temp).Uint()), nil
 	case float64, float32:
-		return int(reflect.ValueOf(t).Float()), nil
-	case int64, int32:
-		return int(reflect.ValueOf(t).Int()), nil
+		return int64(reflect.ValueOf(temp).Float()), nil
+	case bool:
+		if temp.(bool) {
+			return 1, nil
+		}
+		return 0, nil
 	default:
-		return 0, fmt.Errorf("can't convert to int:%v", temp)
+		f, e := strconv.ParseFloat(fmt.Sprint(temp), 64)
+		if e != nil {
+			return 0, e
+		}
+		return int64(f), nil
 	}
 }
 
-var floatType = reflect.TypeOf(float64(0))
-
-//ConvertToFloat64 guess Num format and convert to Float64
-func ConvertToFloat64(unk any) (float64, error) {
-	v := reflect.ValueOf(unk)
-	v = reflect.Indirect(v)
-	if !v.Type().ConvertibleTo(floatType) {
-		return 0, fmt.Errorf("cannot convert %v to float64", v.Type())
+func ConvertToBool(temp any) (bool, error) {
+	switch temp.(type) {
+	case int, int8, int16, int32, int64:
+		return reflect.ValueOf(temp).Int() != 0, nil
+	case uint, uint8, uint16, uint32, uint64:
+		return int64(reflect.ValueOf(temp).Uint()) != 0, nil
+	case float64, float32:
+		return int64(reflect.ValueOf(temp).Float()) != 0, nil
+	case bool:
+		return temp.(bool), nil
+	case string:
+		return temp.(string) != "", nil
+	case nil:
+		return false, nil
+	default:
+		k := reflect.TypeOf(temp).Kind()
+		if k == reflect.Ptr {
+			//前面已经判断了nil，所以这里指针肯定不是nil
+			return true, nil
+		} else if k == reflect.Map || k == reflect.Slice || k == reflect.Array {
+			return reflect.ValueOf(temp).Len() > 0, nil
+		}
+		return false, fmt.Errorf("can't convert to int:%v", temp)
 	}
-	fv := v.Convert(floatType)
-	return fv.Float(), nil
 }
 
-func Min[T constraint.Ordered](x, y T) T {
-	if x < y {
-		return x
+// ConvertToFloat64 guess Num format and convert to Float64
+func ConvertToFloat64(temp any) (float64, error) {
+	switch temp.(type) {
+	case int, int8, int16, int32, int64:
+		return float64(reflect.ValueOf(temp).Int()), nil
+	case uint, uint8, uint16, uint32, uint64:
+		return float64(reflect.ValueOf(temp).Uint()), nil
+	case float64, float32:
+		return reflect.ValueOf(temp).Float(), nil
+	default:
+		return strconv.ParseFloat(fmt.Sprint(temp), 64)
 	}
-	return y
 }
 
-func Max[T constraint.Ordered](x, y T) T {
-	if x > y {
-		return x
-	}
-	return y
+// Min 集合中的最小值
+func Min[T constraint.Ordered](elems ...T) T {
+	return lo.Min(elems)
+}
+
+// Max 集合中的最大值
+func Max[T constraint.Ordered](elems ...T) T {
+	return lo.Max(elems)
 }
 
 func gcd(a, b int) int {
@@ -119,7 +154,7 @@ func Permutations[T any](arr []T) [][]T {
 }
 
 // Combinations 从数组中选出m个任意组合
-//算法：先固定某一位的数字，再遍历其他位的可能性，递归此过程
+// 算法：先固定某一位的数字，再遍历其他位的可能性，递归此过程
 func Combinations[T constraint.Ordered](arr []T, m int) [][]T {
 	if arr == nil || m > len(arr) || m <= 0 {
 		return nil
@@ -151,8 +186,8 @@ func Combinations[T constraint.Ordered](arr []T, m int) [][]T {
 	return result
 }
 
-//DirectProduct 任意多个集合的笛卡尔积（直积）
-//回溯法遍历所有可能性
+// DirectProduct 任意多个集合的笛卡尔积（直积）
+// 回溯法遍历所有可能性
 func DirectProduct[T any](items ...[]T) [][]T {
 	if len(items) == 0 {
 		return nil

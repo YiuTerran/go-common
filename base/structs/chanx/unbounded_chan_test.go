@@ -1,6 +1,7 @@
 package chanx
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -124,4 +125,27 @@ func TestLen(t *testing.T) {
 	assert.Equal(t, 0, len(ch.Out))
 	assert.Equal(t, 0, ch.Len())
 	assert.Equal(t, 0, ch.BufLen())
+}
+
+func TestFunc(t *testing.T) {
+	ch := NewUnboundedChan[func()](10)
+	var wg sync.WaitGroup
+	go func() {
+		for f := range ch.Out {
+			wg.Done()
+			if f == nil {
+				return
+			}
+			f()
+		}
+	}()
+	for k := 0; k < 10; k++ {
+		ch.In <- func() {
+			fmt.Printf("hello world@%v\n", time.Now().Unix())
+			time.Sleep(100 * time.Millisecond)
+		}
+		wg.Add(1)
+	}
+	ch.In <- nil
+	wg.Wait()
 }

@@ -239,7 +239,7 @@ func (r *RingBuffer[T]) writeItem(c T) error {
 }
 
 // Length return the length of available read items.
-func (r *RingBuffer) Length() int {
+func (r *RingBuffer[T]) Length() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -258,12 +258,12 @@ func (r *RingBuffer) Length() int {
 }
 
 // Capacity returns the size of the underlying buffer.
-func (r *RingBuffer) Capacity() int {
+func (r *RingBuffer[T]) Capacity() int {
 	return r.size
 }
 
 // FreeLength returns the length of available items to write.
-func (r *RingBuffer) FreeLength() int {
+func (r *RingBuffer[T]) FreeLength() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -318,14 +318,14 @@ func (r *RingBuffer[T]) Items() []T {
 }
 
 // IsFull returns this ring-buffer is full.
-func (r *RingBuffer) IsFull() bool {
+func (r *RingBuffer[T]) IsFull() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.isFull
 }
 
 // IsEmpty returns this ring-buffer is empty.
-func (r *RingBuffer) IsEmpty() bool {
+func (r *RingBuffer[T]) IsEmpty() bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -333,7 +333,7 @@ func (r *RingBuffer) IsEmpty() bool {
 }
 
 // Reset the read pointer and writer pointer to zero.
-func (r *RingBuffer) Reset() {
+func (r *RingBuffer[T]) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

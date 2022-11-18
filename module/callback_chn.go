@@ -59,7 +59,7 @@ func (g *CallbackChn) Cb(cb func()) {
 	}
 }
 
-// Close 关闭之前需要执行玩所有回调
+// Close 关闭之前需要执行完所有回调
 func (g *CallbackChn) Close() {
 	for g.pendingGo > 0 {
 		g.Cb(<-g.ChanCb.Out)

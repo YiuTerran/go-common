@@ -1,0 +1,6 @@
+log:
+  type: console
+  level: debug
+  path: ./log
+hello:
+  world: xxx

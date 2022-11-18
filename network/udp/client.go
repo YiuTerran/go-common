@@ -8,13 +8,17 @@ import (
 	"time"
 )
 
-// Client 无连接的一次性的udp client，用于同步处理
+// Client 无连接的一次性的udp client，用于同步处理，可以类似HTTP客户端那种使用方式
+// UDP通信流程有两种方式，一种类似TCP，也可以bind然后双向通信. 不同的是UDP的connect啥也不做，只是在本地建立了一个五元组映射。此时内核会维护这套
+// 映射，一旦收到消息就转发给五元组中的本地端口。直到应用程序明确释放掉这个绑定。使用`DialUDP`建立*连接*。
+// 另外一种是无连接的方式，内核将数据包发出去之后，就直接释放掉。使用`ListenUDP`获取的地址直接发送。
 type Client struct {
 	serverAddr *net.UDPAddr
 	processor  network.MsgProcessor
 	conn       *net.UDPConn
 }
 
+// NewClient 生成一个指定的客户端
 func NewClient(addr string, processor network.MsgProcessor) *Client {
 	rAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -41,7 +45,7 @@ func (c *Client) Request(msg any, timeout time.Duration) (resp any, err error) {
 	if timeout > 0 {
 		_ = c.conn.SetDeadline(time.Now().Add(timeout))
 	}
-	buffer := make([]byte, SafePackageSize)
+	buffer := make([]byte, MaxPacketSize)
 	var n int
 	n, _, err = c.conn.ReadFromUDP(buffer)
 	if err != nil {

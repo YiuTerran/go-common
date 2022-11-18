@@ -94,3 +94,19 @@ func (set *Set[T]) ForEach(f func(T)) {
 		f(t)
 	}
 }
+
+// Equals 两个集合是否相等
+func (set *Set[T]) Equals(rhs *Set[T]) bool {
+	if rhs == nil {
+		return set.Size() == 0
+	}
+	if len(set.values) != len(rhs.values) {
+		return false
+	}
+	for k := range set.values {
+		if !rhs.Contains(k) {
+			return false
+		}
+	}
+	return true
+}

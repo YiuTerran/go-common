@@ -8,8 +8,9 @@ package ginutil
 import (
 	"bytes"
 	"fmt"
-	"github.com/YiuTerran/go-common/base/log"
 	"github.com/samber/lo"
+	"github.com/YiuTerran/go-common/base/log"
+	"github.com/YiuTerran/go-common/base/structs/resp"
 	"io"
 	"net"
 	"net/http"
@@ -23,15 +24,19 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	handlerCostTimeMsThreshold = 3000 // 上层业务处理耗时阈值(毫秒级别)
+)
+
 // Config is config setting for Ginzap
 type Config struct {
 	SkipPaths []string
 }
 
-//从http请求中复制出body，注意避免文件上传的场景
+// 从http请求中复制出body，注意避免文件上传的场景
 func peakBody(c *gin.Context) string {
 	if (c.Request.Method == "PUT" || c.Request.Method == "POST") &&
-		!lo.Contains(c.Request.Header["Content-Type"], "multipart/form-data") {
+		!lo.Contains(c.Request.Header["Content-StreamType"], "multipart/form-data") {
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil && err != io.EOF {
 			c.Request.Body = io.NopCloser(bytes.NewReader(body))
@@ -53,50 +58,54 @@ func AccessLogHandler(jsonFormat bool, withBody bool, skipPath ...string) gin.Ha
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
 		c.Next()
-
-		if _, ok := sp[path]; !ok {
-			end := time.Now()
-			latency := end.Sub(start)
-
-			if len(c.Errors) > 0 {
-				// Append error field if this is an erroneous request.
-				for _, e := range c.Errors.Errors() {
-					if jsonFormat {
-						log.JsonError(e)
-					} else {
-						log.Error(e)
-					}
-				}
-			} else {
+		if _, ok := sp[path]; ok {
+			return
+		}
+		end := time.Now()
+		latency := end.Sub(start)
+		costTimeMs := latency.Milliseconds()
+		if costTimeMs >= handlerCostTimeMsThreshold {
+			log.Warn("gin handler process time(ms):%d is too long, request:%s %s Q:%s ST:%d IP:%s UA:%s",
+				costTimeMs, c.Request.Method, path, query, c.Writer.Status(), c.ClientIP(), c.Request.UserAgent())
+		}
+		if len(c.Errors) > 0 {
+			// Append error field if this is an erroneous request.
+			for _, e := range c.Errors.Errors() {
 				if jsonFormat {
-					fields := []zapcore.Field{
-						zap.String("method", c.Request.Method),
-						zap.String("path", path),
-						zap.String("query", query),
-						zap.Int("status", c.Writer.Status()),
-						zap.String("ip", c.ClientIP()),
-						zap.String("user-agent", c.Request.UserAgent()),
-						zap.Duration("latency", latency),
-					}
-					//打印body，一般不需要
-					if withBody {
-						body := peakBody(c)
-						if body != "" {
-							fields = append(fields, zap.String("body", body))
-						}
-					}
-					log.JsonDebug(path, fields...)
+					log.JsonError(e)
 				} else {
-					txt := fmt.Sprintf("%s %s Q:%s ST:%d IP:%s UA:%s LAT:%s", c.Request.Method, path, query, c.Writer.Status(),
-						c.ClientIP(), c.Request.UserAgent(), latency)
-					if withBody {
-						body := peakBody(c)
-						if body != "" {
-							txt += " BODY:" + body
-						}
-					}
-					log.Debug(txt)
+					log.Error(e)
 				}
+			}
+		} else if log.IsDebugEnabled() {
+			if jsonFormat {
+				fields := []zapcore.Field{
+					zap.String("method", c.Request.Method),
+					zap.String("path", path),
+					zap.String("query", query),
+					zap.Int("status", c.Writer.Status()),
+					zap.String("ip", c.ClientIP()),
+					zap.String("user-agent", c.Request.UserAgent()),
+					zap.Duration("latency", latency),
+				}
+				//打印body，一般不需要
+				if withBody {
+					body := peakBody(c)
+					if body != "" {
+						fields = append(fields, zap.String("body", body))
+					}
+				}
+				log.JsonDebug(path, fields...)
+			} else {
+				txt := fmt.Sprintf("%s %s Q:%s ST:%d IP:%s UA:%s LAT:%s", c.Request.Method, path, query,
+					c.Writer.Status(), c.ClientIP(), c.Request.UserAgent(), latency)
+				if withBody {
+					body := peakBody(c)
+					if body != "" {
+						txt += " BODY:" + body
+					}
+				}
+				log.Debug(txt)
 			}
 		}
 	}
@@ -133,4 +142,17 @@ func RecoveryHandler() gin.HandlerFunc {
 		}()
 		c.Next()
 	}
+}
+
+func switchLogLevel(c *gin.Context) {
+	if log.IsDebugEnabled() {
+		log.ChangeLogLevel(log.LevelInfo)
+	} else {
+		log.ChangeLogLevel(log.LevelDebug)
+	}
+	c.JSON(200, resp.EmptyBody{})
+}
+
+func EnableLogSwitch(r *gin.Engine) {
+	r.GET("/debug/logSwitch", switchLogLevel)
 }

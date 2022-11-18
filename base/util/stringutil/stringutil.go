@@ -40,3 +40,11 @@ func CombineHttpUrl(host string, path ...any) string {
 		return fmt.Sprintf("http://%s%s", host, suffix)
 	}
 }
+
+func PtrEq(a *string, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return *a == *b
+}

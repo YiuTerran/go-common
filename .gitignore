@@ -16,6 +16,9 @@
 
 .idea/
 vendor/
+venv/
+nacos/example/cache
+nacos/example/log
 .DS_Store
 
 *.dylib

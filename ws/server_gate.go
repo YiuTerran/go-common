@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"github.com/YiuTerran/go-common/base/structs/rpc"
 	"github.com/YiuTerran/go-common/network"
 	"github.com/YiuTerran/go-common/network/gate"
@@ -18,7 +19,7 @@ type ServerGate struct {
 	MaxMsgLen     uint32
 	MsgProcessor  network.MsgProcessor
 	MsgTextFormat bool
-	AuthFunc      func(*http.Request) (bool, interface{})
+	AuthFunc      func(*http.Request) (bool, any)
 	RPCServer     rpc.IServer
 
 	Addr        string
@@ -35,7 +36,7 @@ func (sg *ServerGate) AgentChanRPC() rpc.IServer {
 	return sg.RPCServer
 }
 
-func (sg *ServerGate) Run(closeSig chan struct{}) {
+func (sg *ServerGate) Run(ctx context.Context) {
 	var wsServer *Server
 	if sg.Addr != "" {
 		wsServer = new(Server)
@@ -57,7 +58,7 @@ func (sg *ServerGate) Run(closeSig chan struct{}) {
 	if wsServer != nil {
 		wsServer.Start()
 	}
-	<-closeSig
+	<-ctx.Done()
 	if wsServer != nil {
 		wsServer.Close()
 	}

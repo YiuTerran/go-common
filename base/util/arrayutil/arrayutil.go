@@ -26,3 +26,9 @@ func SumInts[T constraint.Integer](array []T) int64 {
 	}
 	return result
 }
+
+// Prepend 与append相反，将a放在最前面
+//注意a放置时仍然是按顺序放置的
+func Prepend[T any](array []T, a ...T) []T {
+	return append(a, array...)
+}

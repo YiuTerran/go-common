@@ -3,10 +3,14 @@ go 1.18
 use (
 	./base
 	./db
+	./ginutil
 	./module
+	./nacos
 	./network
 	./pb
 	./redisutil
-	./ginutil
+	./sdp
+	./sip
 	./ws
+	./prom
 )

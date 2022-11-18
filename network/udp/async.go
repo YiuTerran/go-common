@@ -3,6 +3,7 @@ package udp
 import (
 	"errors"
 	"github.com/YiuTerran/go-common/base/log"
+	"github.com/YiuTerran/go-common/base/structs/chanx"
 	"github.com/YiuTerran/go-common/base/util/byteutil"
 	"github.com/YiuTerran/go-common/network"
 	"net"
@@ -22,34 +23,30 @@ const (
 
 type AsyncClient struct {
 	ServerAddr string
-	BufferSize int
-	MaxTry     int //最多尝试次数
+	FailTry    int //失败后尝试次数，默认不尝试
 	Processor  network.MsgProcessor
 
 	closeSig  chan struct{}
-	writeChan chan []byte
-	readChan  chan []byte
+	writeChan *chanx.UnboundedChan[[]byte]
+	readChan  *chanx.UnboundedChan[[]byte]
 	conn      *net.UDPConn
 	wg        *sync.WaitGroup
 	status    atomic.Int32
 }
 
 func (client *AsyncClient) Start() error {
-	if !client.status.CAS(NotInit, Inited) {
+	if !client.status.CompareAndSwap(NotInit, Inited) {
 		return errors.New("server inited")
 	}
-	if client.MaxTry <= 0 {
-		client.MaxTry = 3
-	}
-	if client.BufferSize <= 0 || client.BufferSize >= MaxPacketSize {
-		client.BufferSize = SafePackageSize
+	if client.FailTry < 0 {
+		client.FailTry = 0
 	}
 	if client.Processor == nil {
 		log.Fatal("udp client no processor registered!")
 	}
 	client.closeSig = make(chan struct{}, 1)
-	client.writeChan = make(chan []byte, client.BufferSize)
-	client.readChan = make(chan []byte, client.BufferSize)
+	client.writeChan = chanx.NewUnboundedChan[[]byte](MaxPacketSize)
+	client.readChan = chanx.NewUnboundedChan[[]byte](MaxPacketSize)
 	client.wg = &sync.WaitGroup{}
 
 	client.conn = client.dial()
@@ -72,18 +69,18 @@ func (client *AsyncClient) listen() {
 	for {
 		select {
 		case <-client.closeSig:
-			client.readChan <- nil
-			client.writeChan <- nil
+			client.readChan.In <- nil
+			client.writeChan.In <- nil
 			client.wg.Done()
 			return
 		default:
-			buffer := make([]byte, SafePackageSize)
+			buffer := make([]byte, MaxPacketSize)
 			n, err := client.conn.Read(buffer)
 			if err != nil {
 				continue
 			}
 			buffer = buffer[:n]
-			client.readChan <- buffer
+			client.readChan.In <- buffer
 		}
 	}
 }
@@ -94,15 +91,15 @@ func (client *AsyncClient) doWrite() {
 			log.PanicStack("", r)
 		}
 	}()
-	for b := range client.writeChan {
+	for b := range client.writeChan.Out {
 		if b == nil {
 			break
 		}
-		count := client.MaxTry
-		for count > 0 {
+		count := client.FailTry
+		for count >= 0 {
 			_, err := client.conn.Write(b)
 			if err != nil {
-				log.Error("fail to write udp chan:%+v", err)
+				log.Error("fail to write udp chan:%v", err)
 			} else {
 				break
 			}
@@ -118,7 +115,7 @@ func (client *AsyncClient) doRead() {
 			log.PanicStack("", r)
 		}
 	}()
-	for b := range client.readChan {
+	for b := range client.readChan.Out {
 		if b == nil {
 			break
 		}
@@ -127,6 +124,7 @@ func (client *AsyncClient) doRead() {
 			log.Error("unable to unmarshal udp msg, ignore")
 			continue
 		}
+		//依靠processor路由异步处理
 		err = client.Processor.Route(msg, client)
 		if err != nil {
 			log.Error("fail to route udp msg:%v", err)
@@ -159,15 +157,12 @@ func (client *AsyncClient) WriteMsg(msg any) error {
 	if client.status.Load() == Closed {
 		return errors.New("client closed")
 	}
-	if len(client.writeChan) == cap(client.writeChan) {
-		return ChanFullError
-	}
-	client.writeChan <- byteutil.MergeBytes(args)
+	client.writeChan.In <- byteutil.MergeBytes(args)
 	return nil
 }
 
 func (client *AsyncClient) Close() {
-	if !client.status.CAS(Inited, Closed) {
+	if !client.status.CompareAndSwap(Inited, Closed) {
 		return
 	}
 	_ = client.conn.Close()
@@ -182,5 +177,4 @@ func (client *AsyncClient) CloseAndWait() {
 func (client *AsyncClient) Destroy() {
 	client.status.Store(Closed)
 	_ = client.conn.Close()
-	close(client.writeChan)
 }
