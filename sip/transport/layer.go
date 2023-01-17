@@ -195,7 +195,6 @@ func (tpl *layer) Listen(network string, addr string, options ...ListenOption) e
 		return err
 	}
 	target = FillTargetHostAndPort(protocol.Network(), target)
-
 	err = protocol.Listen(target, options...)
 	if err == nil {
 		if _, ok := tpl.listenPorts[protocol.Network()]; !ok {
@@ -271,13 +270,7 @@ func (tpl *layer) Send(msg sip.Message) error {
 						}
 						target.Port = &port
 					}
-				case "TLS":
-					fallthrough
-				case "WS":
-					fallthrough
-				case "WSS":
-					fallthrough
-				case "TCP":
+				case "TLS", "WS", "WSS", "TCP":
 					if addr, err := net.ResolveTCPAddr("tcp", addrStr); err == nil {
 						port := sip.Port(addr.Port)
 						if addr.IP.To4() == nil {
@@ -290,6 +283,7 @@ func (tpl *layer) Send(msg sip.Message) error {
 				}
 			}
 		}
+		msg.Recipient().UriParams().Remove("transport")
 		if log.IsDebugEnabled() {
 			logger := log.MergeFields(tpl.fields, protocol.Fields(), msg.Fields())
 			logger.Debug("sending SIP request:\n%s", msg)
@@ -353,7 +347,7 @@ func (tpl *layer) serveProtocols() {
 }
 
 func (tpl *layer) dispose() {
-	tpl.Fields().Debug("disposing...")
+	tpl.fields.Debug("disposing...")
 	// wait for protocols
 	for _, protocol := range tpl.protocols.all() {
 		tpl.protocols.drop(protocolKey(protocol.Network()))

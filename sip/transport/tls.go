@@ -29,10 +29,10 @@ func NewTlsProtocol(
 		WithPrefix("transport.Protocol").
 		WithFields(log.Fields{
 			"protocol_ptr": fmt.Sprintf("%p", p),
-		})
+		}.WithFields(log.Fields{"network": "tls"}))
 	//TODO: add separate errs chan to listen errors from pool for reconnection?
 	p.listeners = NewListenerPool(p.conns, errs, cancel, p.Fields())
-	p.connections = NewConnectionPool(output, errs, cancel, msgMapper, p.Fields())
+	p.connections = NewConnectionPool(output, errs, cancel, msgMapper, p.fields)
 	p.listen = func(addr *net.TCPAddr, options ...ListenOption) (net.Listener, error) {
 		if len(options) == 0 {
 			return net.ListenTCP("tcp", addr)

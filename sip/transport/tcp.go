@@ -46,10 +46,10 @@ func NewTcpProtocol(
 		WithPrefix("transport.Protocol").
 		WithFields(log.Fields{
 			"protocol_ptr": fmt.Sprintf("%p", p),
-		})
+		}.WithFields(log.Fields{"network": "tcp"}))
 	// TODO: add separate errs chan to listen errors from pool for reconnection?
-	p.listeners = NewListenerPool(p.conns, errs, cancel, p.Fields())
-	p.connections = NewConnectionPool(output, errs, cancel, msgMapper, p.Fields())
+	p.listeners = NewListenerPool(p.conns, errs, cancel, p.fields)
+	p.connections = NewConnectionPool(output, errs, cancel, msgMapper, p.fields)
 	p.listen = p.defaultListen
 	p.dial = p.defaultDial
 	p.resolveAddr = p.defaultResolveAddr
@@ -106,7 +106,6 @@ func (p *tcpProtocol) pipePools() {
 }
 
 func (p *tcpProtocol) Listen(target *Target, options ...ListenOption) error {
-	target = FillTargetHostAndPort(p.Network(), target)
 	laddr, err := p.resolveAddr(target.Addr())
 	if err != nil {
 		return &ProtocolError{
@@ -124,12 +123,8 @@ func (p *tcpProtocol) Listen(target *Target, options ...ListenOption) error {
 			fmt.Sprintf("%p", p),
 		}
 	}
-
-	p.Fields().Debug("begin listening on %s %s", p.Network(), target.Addr())
-
-	// index listeners by local address
-	// should live infinitely
-	key := ListenerKey(fmt.Sprintf("%s:0.0.0.0:%d", p.network, target.Port))
+	key := ListenerKey(fmt.Sprintf("%s:%s", p.network, target.Addr()))
+	p.Fields().Debug("begin listening on %s", key)
 	err = p.listeners.Put(key, &tcpListener{
 		Listener: listener,
 		network:  p.network,

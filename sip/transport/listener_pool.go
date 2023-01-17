@@ -184,8 +184,8 @@ func (pool *listenerPool) dispose() {
 }
 
 func (pool *listenerPool) serveHandlers() {
-	pool.Fields().Debug("start serve listener handlers")
-	defer pool.Fields().Debug("stop serve listener handlers")
+	pool.fields.Debug("start serve listener handlers")
+	defer pool.fields.Debug("stop serve listener handlers")
 
 	for {
 		logger := pool.Fields()

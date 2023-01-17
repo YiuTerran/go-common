@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// 默认情况下viper读入配置并不是并发安全的，这里简单的包装以下
+// 默认情况下viper读入配置并不是并发安全的，这里简单的包装下
 
 type SafeViper struct {
 	lock  sync.RWMutex

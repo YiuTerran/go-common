@@ -4,8 +4,8 @@ go 1.18
 
 require (
 	github.com/gorilla/websocket v1.5.0
-	github.com/YiuTerran/go-common/base v1.5.0
-	github.com/YiuTerran/go-common/network v0.1.0
+	github.com/YiuTerran/go-common/base v1.5.2
+	github.com/YiuTerran/go-common/network v0.0.0-20220323025554-e6da4b62e3bf
 )
 
 require (

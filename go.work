@@ -13,4 +13,6 @@ use (
 	./sip
 	./ws
 	./prom
+	./apm
+	./kgoutil
 )

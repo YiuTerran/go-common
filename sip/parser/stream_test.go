@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/samber/lo"
-	"github.com/YiuTerran/go-common/base/log"
 	"github.com/YiuTerran/go-common/sip/parser"
 	"github.com/YiuTerran/go-common/sip/sip"
 	"reflect"
@@ -1692,16 +1691,8 @@ func (expected *headerBlockResult) equals(other result) (equal bool, reason stri
 }
 
 func parseHeader(rawHeader string) (headers []sip.Header, err error) {
-	messages := make(chan sip.Message, 0)
-	es := make(chan error, 0)
-	p := parser.NewParser(messages, es, false, nil)
-	defer func() {
-		log.Debug("Stopping %p", p)
-		p.Stop()
-	}()
-
+	p := parser.NewPacketParser(nil)
 	headers, err = p.ParseHeader(rawHeader)
-
 	return
 }
 
@@ -2298,16 +2289,33 @@ type ParserTest struct {
 
 func (pt *ParserTest) Test(t *testing.T) {
 	testsRun++
-	output := make(chan sip.Message)
-	errs := make(chan error)
-	p := parser.NewParser(output, errs, pt.streamed, nil)
-	defer p.Stop()
+	if pt.streamed {
+		output := make(chan sip.Message)
+		errs := make(chan error)
+		p := parser.NewStreamParser(output, errs, nil)
+		defer p.Stop()
 
-	for stepIdx, step := range pt.steps {
-		success, reason := step.Test(p, output, errs)
-		if !success {
-			t.Errorf("failure in pt step %d of input:\n%s\n\nfailure was: %s", stepIdx, pt.String(), reason)
-			return
+		for stepIdx, step := range pt.steps {
+			success, reason := step.Test(p, output, errs)
+			if !success {
+				t.Errorf("failure in pt step %d of input:\n%s\n\nfailure was: %s", stepIdx, pt.String(), reason)
+				return
+			}
+		}
+	} else {
+		p := parser.NewPacketParser(nil)
+		var reason string
+		for stepIdx, step := range pt.steps {
+			msg, err := p.ParseMessage([]byte(step.input))
+			if err != nil {
+				reason = step.checkError(err)
+			} else {
+				reason = step.checkMsg(msg)
+			}
+			if reason != "" {
+				t.Errorf("failure in pt step %d of input:\n%s\n\nfailure was: %s", stepIdx, pt.String(), reason)
+				return
+			}
 		}
 	}
 
@@ -2335,6 +2343,28 @@ type parserTestStep struct {
 	returnedError error
 }
 
+func (step *parserTestStep) checkMsg(msg sip.Message) string {
+	var reason string
+	if msg == nil && step.result != nil {
+		reason = fmt.Sprintf("nil message returned from StreamParser; expected:\n%s", step.result.String())
+	} else if msg != nil && step.result == nil {
+		reason = fmt.Sprintf("expected no message to be returned; got\n%s", msg.String())
+	} else if msg.String() != step.result.String() {
+		reason = fmt.Sprintf("unexpected message returned by StreamParser; expected:\n\n%s\n\nbut got:\n\n%s", step.result.String(), msg.String())
+	}
+	return reason
+}
+
+func (step *parserTestStep) checkError(err error) string {
+	var reason string
+	if err == nil && step.sentError != nil {
+		reason = fmt.Sprintf("nil error output from StreamParser; expected: %s", step.sentError.Error())
+	} else if err != nil && step.sentError == nil {
+		reason = fmt.Sprintf("expected no error; StreamParser output: %s", err.Error())
+	}
+	return reason
+}
+
 func (step *parserTestStep) Test(parser parser.Parser, msgChan chan sip.Message, errChan chan error) (success bool, reason string) {
 	_, err := parser.Write([]byte(step.input))
 	if err != step.returnedError {
@@ -2345,33 +2375,15 @@ func (step *parserTestStep) Test(parser parser.Parser, msgChan chan sip.Message,
 		success = true
 		return
 	}
-
 	// TODO - check returns here as they look a bit fishy.
 	if err == nil {
 		select {
 		case msg := <-msgChan:
-			if msg == nil && step.result != nil {
-				success = false
-				reason = fmt.Sprintf("nil message returned from parser; expected:\n%s", step.result.String())
-			} else if msg != nil && step.result == nil {
-				success = false
-				reason = fmt.Sprintf("expected no message to be returned; got\n%s", msg.String())
-			} else if msg.String() != step.result.String() {
-				success = false
-				reason = fmt.Sprintf("unexpected message returned by parser; expected:\n\n%s\n\nbut got:\n\n%s", step.result.String(), msg.String())
-			} else {
-				success = true
-			}
+			reason = step.checkMsg(msg)
+			success = reason == ""
 		case err = <-errChan:
-			if err == nil && step.sentError != nil {
-				success = false
-				reason = fmt.Sprintf("nil error output from parser; expected: %s", step.sentError.Error())
-			} else if err != nil && step.sentError == nil {
-				success = false
-				reason = fmt.Sprintf("expected no error; parser output: %s", err.Error())
-			} else {
-				success = true
-			}
+			reason = step.checkError(err)
+			success = reason == ""
 		case <-time.After(time.Second):
 			if step.result != nil || step.sentError != nil {
 				success = false

@@ -3,10 +3,10 @@ package ws
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/YiuTerran/go-common/base/log"
 	"github.com/YiuTerran/go-common/base/structs/set"
 	"github.com/YiuTerran/go-common/network"
-	"github.com/gorilla/websocket"
 	"net"
 	"net/http"
 	"strings"

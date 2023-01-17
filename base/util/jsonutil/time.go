@@ -2,9 +2,9 @@ package jsonutil
 
 import (
 	"database/sql/driver"
+	"github.com/araddon/dateparse"
 	"github.com/YiuTerran/go-common/base/log"
 	"github.com/YiuTerran/go-common/base/util/timeutil"
-	"github.com/araddon/dateparse"
 	"time"
 )
 

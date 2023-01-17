@@ -59,6 +59,13 @@ if c and c == ARGV[2] then
 else
     return 0
 end`
+	hsetIfKeyExist = `
+if redis.call('exists', KEYS[1]) == 1 then
+    redis.call('hset', KEYS[1], ARGV[1], ARGV[2])
+    return 1
+end
+return 0
+`
 	hgetset    = `redis.call('hget',KEYS[1],ARGV[1]); redis.call('hset',KEYS[1],ARGV[1],ARGV[2]); return old;`
 	ttlIfEqual = `
 local c = redis.call('get',KEYS[1])
@@ -84,5 +91,6 @@ var (
 	DelIfEqual           = redis.NewScript(delIfEqual)
 	HDelIfEqual          = redis.NewScript(hdelIfEqual)
 	HGetSet              = redis.NewScript(hgetset)
+	HSetIfKeyExist       = redis.NewScript(hsetIfKeyExist)
 	ExpireIfEqual        = redis.NewScript(ttlIfEqual)
 )

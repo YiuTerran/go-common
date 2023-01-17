@@ -36,7 +36,7 @@ os.system("git tag %s/%s" % (module, version))
 os.system("git push")
 os.system("git push --tags")
 for d in os.listdir("."):
-    if d != module and os.path.isdir(d):
+    if d != module and os.path.isdir(d) and not d.startswith('.'):
         os.system('cd %s && go mod tidy && cd ..' % d)
         print('update %s dep...' % d)
 os.system("git add . && git commit -m 'update modules dep of %s version to %s'" % (module, version))

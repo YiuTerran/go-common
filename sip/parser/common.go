@@ -1,23 +1,22 @@
 package parser
 
-// Forked from github.com/StefanKopieczek/gossip by @StefanKopieczek
-
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"github.com/YiuTerran/go-common/base/log"
-	"github.com/YiuTerran/go-common/base/structs/chanx"
-	"github.com/YiuTerran/go-common/sip/sip"
 	"github.com/samber/lo"
-	"go.uber.org/atomic"
+	"github.com/YiuTerran/go-common/base/log"
+	"github.com/YiuTerran/go-common/sip/sip"
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode"
 	"unicode/utf8"
 )
+
+/**
+  *  @author tryao
+  *  @date 2023/01/12 17:59
+**/
 
 // The whitespace characters recognised by the Augmented Backus-Naur Form syntax
 // that SIP uses (RFC 3261 S.25).
@@ -27,26 +26,22 @@ const abnfWs = " \t"
 // C.f. RFC 3261 S. 8.1.1.5.
 const maxCseq = 2147483647
 
-// The buffer size of the parser input channel.
+// The buffer size of the StreamParser input channel.
 
 // Parser converts the raw bytes of SIP messages into sip.Message objects.
 // It allows
 type Parser interface {
 	// Write implements io.Writer. Queues the given bytes to be parsed.
-	// If the parser has terminated due to a previous fatal error, it will return n=0 and an appropriate error.
+	// If the StreamParser has terminated due to a previous fatal error, it will return n=0 and an appropriate error.
 	// Otherwise, it will return n=len(p) and err=nil.
 	// Note that err=nil does not indicate that the data provided is valid - simply that the data was successfully queued for parsing.
 	Write(p []byte) (n int, err error)
-	// SetHeaderParser register a custom header parser for a particular header type.
-	// This will overwrite any existing registered parser for that header type.
-	// If a parser is not available for a header type in a message, the parser will produce a sip.GenericHeader struct.
+	// SetHeaderParser register a custom header StreamParser for a particular header type.
+	// This will overwrite any existing registered StreamParser for that header type.
+	// If a StreamParser is not available for a header type in a message, the StreamParser will produce a sip.GenericHeader struct.
 	SetHeaderParser(headerName string, headerParser HeaderParser)
-
 	Stop()
-
 	String() string
-	// Reset resets parser state
-	Reset()
 	ParseHeader(headerText string) (headers []sip.Header, err error)
 }
 
@@ -88,395 +83,13 @@ func defaultHeaderParsers() map[string]HeaderParser {
 }
 
 // ParseMessage
-// Deprecated, 每次都要新建一个parser，性能较差，已经废弃
-// parse a SIP message by creating a parser on the fly.
-// This is more costly than reusing a parser, but is necessary when we do not
+// parse a SIP message by creating a StreamParser on the fly.
+// This is more costly than reusing a StreamParser, but is necessary when we do not
 // have a guarantee that all messages coming over a connection are from the
 // same endpoint (e.g. UDP).
 func ParseMessage(msgData []byte, fields log.Fields) (sip.Message, error) {
-	output := make(chan sip.Message, 0)
-	errs := make(chan error, 0)
-
-	parser := NewParser(output, errs, false, fields)
-	defer parser.Stop()
-
-	if _, err := parser.Write(msgData); err != nil {
-		return nil, err
-	}
-
-	select {
-	case msg := <-output:
-		return msg, nil
-	case err := <-errs:
-		return nil, err
-	}
-}
-
-type PacketParser struct {
-	p    Parser
-	out  chan sip.Message
-	errs chan error
-}
-
-func NewPacketParser(logger log.Fields) *PacketParser {
-	output := make(chan sip.Message, 0)
-	errs := make(chan error, 0)
-
-	return &PacketParser{
-		p:    NewParser(output, errs, false, logger),
-		out:  output,
-		errs: errs,
-	}
-}
-
-func (pp *PacketParser) ParseMessage(msgData []byte) (sip.Message, error) {
-	if _, err := pp.p.Write(msgData); err != nil {
-		return nil, err
-	}
-
-	select {
-	case msg := <-pp.out:
-		return msg, nil
-	case err := <-pp.errs:
-		return nil, err
-	}
-}
-
-func (pp *PacketParser) Stop() {
-	if pp == nil {
-		return
-	}
-	if pp.p != nil {
-		pp.p.Stop()
-	}
-	close(pp.out)
-	close(pp.errs)
-}
-
-// NewParser create a new Parser.
-//
-// Parsed SIP messages will be sent down the 'output' chan provided.
-// Any errors which force the parser to terminate will be sent down the 'errs' chan provided.
-//
-// If streamed=false, each Write call to the parser should contain data for one complete SIP message.
-// If streamed=true, Write calls can contain a portion of a full SIP message.
-// The end of one message and the start of the next may be provided in a single call to Write.
-// When streamed=true, all SIP messages provided must have a Content-Length header.
-// SIP messages without a Content-Length will cause the parser to permanently stop, and will result in an error on the errs chan.
-// 'streamed' should be set to true whenever the caller cannot reliably identify the starts and ends of messages from the transport frames,
-// e.g. when using streamed protocols such as TCP.
-func NewParser(
-	output chan<- sip.Message,
-	errs chan<- error,
-	streamed bool, //udp时设为false，tcp时设为true
-	fields log.Fields,
-) Parser {
-	p := &parser{
-		streamed: streamed,
-		done:     make(chan struct{}),
-	}
-	p.fields = log.Fields{
-		"parser_ptr": fmt.Sprintf("%p", p),
-	}.WithFields(fields).WithPrefix("parser.Parser")
-	// Configure the parser with the standard set of header parsers.
-	p.headerParsers = make(map[string]HeaderParser)
-	for headerName, headerParser := range defaultHeaderParsers() {
-		p.SetHeaderParser(headerName, headerParser)
-	}
-
-	p.output = output
-	p.errs = errs
-	p.bodyLengths = chanx.NewUnboundedChan[[]int](3)
-	// Create a managed buffer to allow message data to be asynchronously provided to the parser, and
-	// to allow the parser to block until enough data is available to parse.
-	p.input = newParserBuffer(p.Fields())
-	// Done for input a line at a time, and produce SipMessages to send down p.output.
-	go p.parse(streamed, p.done)
-
-	return p
-}
-
-type parser struct {
-	headerParsers map[string]HeaderParser
-	streamed      bool
-	input         *parserBuffer
-	bodyLengths   *chanx.UnboundedChan[[]int]
-
-	output chan<- sip.Message
-	errs   chan<- error
-
-	stopped atomic.Bool
-	done    chan struct{}
-
-	mu     sync.Mutex
-	fields log.Fields
-}
-
-func (p *parser) String() string {
-	if p == nil {
-		return "Parser <nil>"
-	}
-	return fmt.Sprintf("Parser %p", p)
-}
-
-func (p *parser) Fields() log.Fields {
-	return p.fields
-}
-
-func (p *parser) Write(data []byte) (int, error) {
-	if p.stopped.Load() {
-		return 0, WriteError(fmt.Sprintf("cannot write data to stopped %s", p))
-	}
-
-	var (
-		num int
-		err error
-	)
-	if !p.streamed {
-		bl := getBodyLength(data)
-		defer func() {
-			if err == nil {
-				p.bodyLengths.In <- []int{bl, len(data)}
-			}
-		}()
-
-		if bl == -1 {
-			err = InvalidMessageFormat(fmt.Sprintf("%s cannot write data: double CRLF sequence not found in the input data", p))
-			return num, err
-		}
-	}
-
-	num, err = p.input.Write(data)
-	if err != nil {
-		err = WriteError(fmt.Sprintf("%s write data failed: %s", p, err))
-		return num, err
-	}
-	return num, nil
-}
-
-// Stop parser processing, and allow all resources to be garbage collected.
-// The parser will not release its resources until Stop() is called,
-// even if the parser object itself is garbage collected.
-func (p *parser) Stop() {
-	if !p.stopped.CompareAndSwap(false, true) {
-		return
-	}
-	p.input.Stop()
-	p.bodyLengths.Close()
-	p.mu.Lock()
-	done := p.done
-	p.mu.Unlock()
-	<-done
-}
-
-func (p *parser) Reset() {
-	p.Stop()
-	// reset state
-	p.mu.Lock()
-	done := make(chan struct{})
-	p.done = done
-	p.mu.Unlock()
-	p.bodyLengths.Close()
-	p.bodyLengths = chanx.NewUnboundedChan[[]int](3)
-	// and re-run
-	go p.parse(p.streamed, done)
-	p.stopped.Store(false)
-}
-
-// Consume input lines one at a time, producing sip.Message objects and sending them down p.output.
-func (p *parser) parse(requireContentLength bool, done chan<- struct{}) {
-	defer close(done)
-
-	var msg sip.Message
-	var skipStreamedErr bool
-
-	for {
-		// Parse the StartLine.
-		startLine, err := p.input.NextLine()
-		if err != nil {
-			break
-		}
-		var termErr error
-		if startLine == "" {
-			if p.streamed {
-				continue
-			}
-			termErr = fmt.Errorf("skip empty line")
-		} else if isRequest(startLine) {
-			method, recipient, sipVersion, err := ParseRequestLine(startLine)
-			if err == nil {
-				msg = sip.NewRequest("", method, recipient, sipVersion, []sip.Header{}, "", nil)
-			} else {
-				termErr = err
-			}
-		} else if isResponse(startLine) {
-			sipVersion, statusCode, reason, err := ParseStatusLine(startLine)
-			if err == nil {
-				msg = sip.NewResponse("", sipVersion, statusCode, reason, []sip.Header{}, "", nil)
-			} else {
-				termErr = err
-			}
-		} else {
-			termErr = fmt.Errorf("transmission beginning '%s' is not a SIP message", startLine)
-		}
-
-		if termErr != nil {
-			termErr = InvalidStartLineError(fmt.Sprintf("%s failed to parse first line of message: %s", p, termErr))
-			if p.streamed {
-				if !skipStreamedErr {
-					skipStreamedErr = true
-					p.errs <- termErr
-				}
-			} else {
-				slice := <-p.bodyLengths.Out
-				skip := slice[1] - len(startLine) - 2
-
-				if skipped, err := p.input.NextChunk(skip); err != nil {
-					p.Fields().Error("skip failed: %s", err)
-				} else if startLine != "" {
-					p.errs <- termErr
-					p.Fields().Debug("skip %s for invalid start line", skipped)
-				}
-			}
-			continue
-		} else {
-			skipStreamedErr = false
-		}
-
-		// Parse the header section.
-		// Headers can be split across lines (marked by whitespace at the start of subsequent lines),
-		// so store lines into a buffer, and then flush and parse it when we hit the end of the header.
-		var buffer bytes.Buffer
-		headers := make([]sip.Header, 0)
-
-		flushBuffer := func() {
-			if buffer.Len() > 0 {
-				newHeaders, err := p.ParseHeader(buffer.String())
-				if err == nil {
-					headers = append(headers, newHeaders...)
-				} else {
-					p.Fields().Warn("skip header '%s' due to error: %s", buffer, err)
-				}
-				buffer.Reset()
-			}
-		}
-
-		for {
-			line, err := p.input.NextLine()
-
-			if err != nil {
-				break
-			}
-
-			if len(line) == 0 {
-				// We've hit the end of the header section.
-				// Parse anything remaining in the buffer, then break out.
-				flushBuffer()
-
-				break
-			}
-
-			if !strings.Contains(abnfWs, string(line[0])) {
-				// This line starts a new header.
-				// Parse anything currently in the buffer, then store the new header line in the buffer.
-				flushBuffer()
-				buffer.WriteString(line)
-			} else if buffer.Len() > 0 {
-				// This is a continuation line, so just add it to the buffer.
-				buffer.WriteString(" ")
-				buffer.WriteString(line)
-			} else {
-				// This is a continuation line, but also the first line of the whole header section.
-				// Discard it and log.
-				p.Fields().Debug(
-					"discard unexpected continuation line '%s' at start of header block in message '%s'",
-					line,
-					msg.Short(),
-				)
-			}
-		}
-
-		// Store the headers in the message object.
-		for _, header := range headers {
-			msg.AppendHeader(header)
-		}
-
-		var contentLength int
-		// Determine the length of the body, so we know when to stop parsing this message.
-		if p.streamed {
-			// Use the content-length header to identify the end of the message.
-			contentLengthHeaders := msg.GetHeaders("Content-Length")
-			if len(contentLengthHeaders) == 0 {
-				skipStreamedErr = true
-
-				termErr := &sip.MalformedMessageError{
-					Err: fmt.Errorf("missing required 'Content-Length' header"),
-					Msg: msg.String(),
-				}
-				p.errs <- termErr
-
-				continue
-			} else if len(contentLengthHeaders) > 1 {
-				skipStreamedErr = true
-
-				var errbuf bytes.Buffer
-				errbuf.WriteString("multiple 'Content-Length' headers on message '")
-				errbuf.WriteString(msg.Short())
-				errbuf.WriteString(fmt.Sprintf("'; parser: %s:\n", p))
-				for _, header := range contentLengthHeaders {
-					errbuf.WriteString("\t")
-					errbuf.WriteString(header.String())
-				}
-				termErr := &sip.MalformedMessageError{
-					Err: errors.New(errbuf.String()),
-					Msg: msg.String(),
-				}
-				p.errs <- termErr
-
-				continue
-			}
-
-			contentLength = int(*(contentLengthHeaders[0].(*sip.ContentLength)))
-		} else {
-			// We're not in streaming mode, so the Write method should have calculated the length of the body for us.
-			slice := <-p.bodyLengths.Out
-			contentLength = slice[0]
-		}
-
-		body, err := p.input.NextChunk(contentLength)
-		if err != nil {
-			termErr := &sip.BrokenMessageError{
-				Err: fmt.Errorf("read message body failed: %w", err),
-				Msg: msg.String(),
-			}
-			p.errs <- termErr
-
-			continue
-		}
-		// RFC 3261 - 18.3.
-		if len(body) != contentLength {
-			termErr := &sip.BrokenMessageError{
-				Err: fmt.Errorf("incomplete message body: read %d bytes, expected %d bytes", len(body), contentLength),
-				Msg: msg.String(),
-			}
-			p.errs <- termErr
-
-			continue
-		}
-
-		if strings.TrimSpace(body) != "" {
-			msg.SetBody(body, false)
-		}
-
-		p.output <- msg
-	}
-	return
-}
-
-// SetHeaderParser implements ParserFactory.SetHeaderParser.
-func (p *parser) SetHeaderParser(headerName string, headerParser HeaderParser) {
-	headerName = strings.ToLower(headerName)
-	p.headerParsers[headerName] = headerParser
+	parser := NewPacketParser(fields)
+	return parser.ParseMessage(msgData)
 }
 
 // Calculate the size of a SIP message's body, given the entire contents of the message as a byte array.
@@ -599,7 +212,7 @@ func ParseUri(uriStr string) (uri sip.Uri, err error) {
 		sipUri, err = ParseSipUri(uriStr)
 		uri = &sipUri
 	case "sips":
-		// SIPS URIs have the same form as SIP uris, so we use the same parser.
+		// SIPS URIs have the same form as SIP uris, so we use the same StreamParser.
 		var sipUri sip.SipUri
 		sipUri, err = ParseSipUri(uriStr)
 		uri = &sipUri
@@ -718,7 +331,7 @@ func ParseHostPort(rawText string) (host string, port *sip.Port, err error) {
 // A map of key to value will be returned, along with the number of characters consumed.
 // Provide 0 for start or end to indicate that there is no starting/ending delimiter.
 // If quoteValues is true, values can be enclosed in double-quotes which will be validated by the
-// parser and omitted from the returned map.
+// StreamParser and omitted from the returned map.
 // If permitSingletons is true, keys with no values are permitted.
 // These will result in a nil value in the returned map.
 func ParseHeaderParams(
@@ -861,39 +474,6 @@ parseLoop:
 	return
 }
 
-// ParseHeader parse a header string, producing one or more Header objects.
-// (SIP messages containing multiple headers of the same type can express them as a
-// single header containing a comma-separated argument list).
-func (p *parser) ParseHeader(headerText string) (headers []sip.Header, err error) {
-	headers = make([]sip.Header, 0)
-
-	colonIdx := strings.Index(headerText, ":")
-	if colonIdx == -1 {
-		err = fmt.Errorf("field name with no value in header: %s", headerText)
-		return
-	}
-
-	fieldName := strings.TrimSpace(headerText[:colonIdx])
-	lowerFieldName := strings.ToLower(fieldName)
-	fieldText := strings.TrimSpace(headerText[colonIdx+1:])
-	if headerParser, ok := p.headerParsers[lowerFieldName]; ok {
-		// We have a registered parser for this header type - use it.
-		headers, err = headerParser(lowerFieldName, fieldText)
-	} else {
-		// We have no registered parser for this header type,
-		// so we encapsulate the header data in a GenericHeader struct.
-		p.Fields().Debug("no parser for header type %s", fieldName)
-
-		header := sip.GenericHeader{
-			HeaderName: fieldName,
-			Contents:   fieldText,
-		}
-		headers = []sip.Header{&header}
-	}
-
-	return
-}
-
 // Parse a `To`, `From` or `Contact` header line, producing one or more logical SipHeaders.
 func parseAddressHeader(headerName string, headerText string) (
 	headers []sip.Header, err error) {
@@ -911,7 +491,7 @@ func parseAddressHeader(headerName string, headerText string) (
 		}
 		if len(displayNames) != len(uris) || len(uris) != len(paramSets) {
 			// This shouldn't happen unless ParseAddressValues is bugged.
-			err = fmt.Errorf("internal parser error: parsed param mismatch. "+
+			err = fmt.Errorf("internal StreamParser error: parsed param mismatch. "+
 				"%d display names, %d uris and %d param sets "+
 				"in %s",
 				len(displayNames), len(uris), len(paramSets),
@@ -1440,7 +1020,7 @@ func parseRecordRouteHeader(headerName string, headerText string) (headers []sip
 // GetNextHeaderLine extract the next logical header line from the message.
 // This may run over several actual lines; lines that start with whitespace are
 // a continuation of the previous line.
-// Therefore also return how many lines we consumed so the parent parser can
+// Therefore also return how many lines we consumed so the parent StreamParser can
 // keep track of progress through the message.
 func GetNextHeaderLine(contents []string) (headerText string, consumed int) {
 	if len(contents) == 0 {

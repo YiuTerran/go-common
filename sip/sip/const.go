@@ -177,7 +177,7 @@ var phrases = map[StatusCode]string{
 	StatusFlowFailed:                   "Flow Failed",
 	StatusAnonymityDisallowed:          "Anonymity Disallowed",
 	StatusBadIdentityInfo:              "Bad Identity-Info",
-	StatusUnsupportedCertificate:       "Unsupported Certificate",
+	StatusUnsupportedCertificate:       "Unsupported CertFile",
 	StatusInvalidIdentityHeader:        "Invalid Identity Header",
 	StatusFirstHopLacksOutboundSupport: "First Hop Lacks Outbound Support",
 	StatusMaxBreadthExceeded:           "Max-Breadth Exceeded",

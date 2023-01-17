@@ -29,10 +29,11 @@ func NewUdpProtocol(
 		WithPrefix("transport.Protocol").
 		WithFields(log.Fields{
 			"protocol_ptr": fmt.Sprintf("%p", p),
-		})
+		}.WithFields(log.Fields{
+			"network": "udp",
+		}))
 	// TODO: add separate errs chan to listen errors from pool for reconnection?
-	p.connections = NewConnectionPool(output, errs, cancel, msgMapper, p.Fields())
-
+	p.connections = NewConnectionPool(output, errs, cancel, msgMapper, p.fields)
 	return p
 }
 
@@ -41,8 +42,6 @@ func (p *udpProtocol) Done() <-chan struct{} {
 }
 
 func (p *udpProtocol) Listen(target *Target, options ...ListenOption) error {
-	// fill empty target props with default values
-	target = FillTargetHostAndPort(p.Network(), target)
 	// resolve local UDP endpoint
 	lAddr, err := net.ResolveUDPAddr(p.network, target.Addr())
 	if err != nil {
@@ -62,11 +61,11 @@ func (p *udpProtocol) Listen(target *Target, options ...ListenOption) error {
 		}
 	}
 
-	p.Fields().Debug("begin listening on %s %s", p.Network(), lAddr)
-
 	// register new connection
 	// index by local address, TTL=0 - unlimited expiry time
 	key := ConnectionKey(fmt.Sprintf("%s:0.0.0.0:%d", p.network, lAddr.Port))
+	p.Fields().Debug("begin listening on %s", key)
+	//NOTE: udp无需放入listenerPool，每个端口只有个conn
 	conn := NewConnection(udpConn, key, p.network, p.Fields())
 	err = p.connections.Put(conn, 0)
 	if err != nil {
@@ -110,7 +109,7 @@ func (p *udpProtocol) Send(target *Target, msg sip.Message) error {
 			ProtoPtr: fmt.Sprintf("%p", p),
 		}
 	}
-
+	//确定本地监听端口对应的服务
 	for _, conn := range p.connections.All() {
 		parts := strings.Split(string(conn.Key()), ":")
 		if parts[2] == port {
@@ -121,7 +120,6 @@ func (p *udpProtocol) Send(target *Target, msg sip.Message) error {
 					ProtoPtr: fmt.Sprintf("%p", p),
 				}
 			}
-
 			return nil
 		}
 	}

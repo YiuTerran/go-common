@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/YiuTerran/go-common/base/log"
-	"github.com/YiuTerran/go-common/base/structs/chanx"
 	"github.com/YiuTerran/go-common/base/structs/timing"
 	"github.com/YiuTerran/go-common/sip/parser"
 	"github.com/YiuTerran/go-common/sip/sip"
@@ -84,6 +83,9 @@ func NewConnectionPool(
 		done:  make(chan struct{}),
 		hMsg:  make(chan sip.Message),
 		hErrs: make(chan error),
+
+		hwg: sync.WaitGroup{},
+		mu:  sync.RWMutex{},
 	}
 
 	pool.fields = fields.
@@ -190,8 +192,10 @@ func (pool *connectionPool) Length() int {
 }
 
 func (pool *connectionPool) dispose() {
+	pool.fields.Debug("disposing...")
 	// clean pool
 	_ = pool.DropAll()
+	pool.fields.Debug("waiting handler done...")
 	pool.hwg.Wait()
 
 	// stop serveHandlers goroutine
@@ -199,12 +203,13 @@ func (pool *connectionPool) dispose() {
 	close(pool.hErrs)
 
 	close(pool.done)
+	pool.fields.Debug("disposed")
 }
 
 func (pool *connectionPool) serveHandlers() {
 	if log.IsDebugEnabled() {
-		pool.Fields().Debug("begin serve connection handlers")
-		defer pool.Fields().Debug("stop serve connection handlers")
+		pool.fields.Debug("begin serve connection handlers")
+		defer pool.fields.Debug("stop serve connection handlers")
 	}
 
 	for {
@@ -286,7 +291,7 @@ func (pool *connectionPool) serveHandlers() {
 
 				var connErr *ConnectionError
 				if errors.As(hErr.Err, &connErr) {
-					pool.errs <- hErr.Err
+					logger.Debug("conn error:%s", hErr.Err)
 				}
 
 				continue
@@ -390,7 +395,6 @@ type connectionHandler struct {
 	cancelOnce sync.Once
 	canceled   chan struct{}
 	done       chan struct{}
-	addrs      *chanx.UnboundedChan[any]
 
 	fields log.Fields
 }
@@ -423,7 +427,6 @@ func NewConnectionHandler(
 			"connection_key":         conn.Key(),
 			"connection_network":     conn.Network(),
 		})
-
 	if ttl > 0 {
 		handler.expiry = time.Now().Add(ttl)
 		handler.timer = timing.NewTimer(ttl)
@@ -475,93 +478,111 @@ func (handler *connectionHandler) Expired() bool {
 // Serve is connection serving loop.
 // Waits for the connection to expire, and notifies the pool when it does.
 func (handler *connectionHandler) Serve() {
-	defer close(handler.done)
 	// start connection serving goroutines
-	msgs, errs := handler.readConnection()
-	handler.pipeOutputs(msgs, errs)
+	handler.readConnection()
+	close(handler.done)
 }
 
-func (handler *connectionHandler) readConnection() (<-chan sip.Message, <-chan error) {
+// tcp读取字节流
+func (handler *connectionHandler) readStream() {
 	msgs := make(chan sip.Message)
 	errs := make(chan error)
-	streamed := handler.Connection().Streamed()
-	var (
-		pktPrs *parser.PacketParser
-		strPrs parser.Parser
-	)
-	if streamed {
-		strPrs = parser.NewParser(msgs, errs, streamed, handler.Fields())
-	} else {
-		pktPrs = parser.NewPacketParser(handler.Fields())
-	}
-	var raddr net.Addr
-	if streamed {
-		raddr = handler.Connection().RemoteAddr()
-	} else {
-		handler.addrs = chanx.NewUnboundedChan[any](3)
-	}
-
+	pr := parser.NewStreamParser(msgs, errs, handler.Fields())
+	saddr := fmt.Sprintf("%v", handler.Connection().RemoteAddr())
+	//生产者协程
 	go func() {
 		defer func() {
 			_ = handler.Connection().Close()
-			if streamed {
-				strPrs.Stop()
-			} else {
-				pktPrs.Stop()
-			}
-			if handler.addrs != nil {
-				handler.addrs.Close()
-			}
+			pr.Stop()
 			close(msgs)
 			close(errs)
 		}()
-
 		buf := make([]byte, bufferSize)
-
 		var (
 			num int
 			err error
 		)
-
 		for {
-			// wait for data
-			if streamed {
-				num, err = handler.Connection().Read(buf)
-			} else {
-				num, raddr, err = handler.Connection().ReadFrom(buf)
-			}
-
+			num, err = handler.Connection().Read(buf)
 			if err != nil {
 				// broken or closed connection
 				// so send error and exit
-				handler.handleError(err, fmt.Sprintf("%v", raddr))
-
+				handler.handleError(err, saddr)
 				return
 			}
-
 			data := buf[:num]
-
-			// skip empty udp packets
-			if len(bytes.Trim(data, "\x00")) == 0 {
-				handler.Fields().Debug("skip empty data: %#v", data)
-				continue
-			}
-
-			if streamed {
-				if _, err := strPrs.Write(data); err != nil {
-					handler.handleError(err, fmt.Sprintf("%v", raddr))
-				}
-			} else {
-				if msg, err := pktPrs.ParseMessage(data); err == nil {
-					handler.handleMessage(msg, fmt.Sprintf("%v", raddr))
-				} else {
-					handler.handleError(err, fmt.Sprintf("%v", raddr))
-				}
+			if _, err := pr.Write(data); err != nil {
+				handler.handleError(err, saddr)
 			}
 		}
 	}()
+	//消费者协程
+	for {
+		select {
+		case <-handler.timer.C():
+			if handler.Expiry().IsZero() {
+				// handler expiryTime is zero only when TTL = 0 (unlimited handler)
+				// so we must not get here with zero expiryTime
+				handler.Fields().Fatal("fires expiry timer with ZERO expiryTime")
+			}
+			// pass up to the pool
+			handler.handleError(ExpireError("connection expired"), saddr)
+		case msg, ok := <-msgs:
+			if !ok {
+				return
+			}
+			handler.handleMessage(msg, saddr)
+		case err, ok := <-errs:
+			if !ok {
+				return
+			}
+			handler.handleError(err, saddr)
+		}
+	}
+}
 
-	return msgs, errs
+// udp读取数据报，由于udp没有连接，所以需要使用raddr做一个parser的pool
+// 就是每个地址一个parser
+func (handler *connectionHandler) readPacket() {
+	//生产者协程
+	buf := make([]byte, bufferSize)
+	pr := parser.NewPacketParser(log.Fields{})
+	//解析
+	redirect := func(data []byte, addr net.Addr) {
+		// skip empty udp packets
+		if len(bytes.Trim(data, "\x00")) == 0 {
+			return
+		}
+		if msg, err := pr.ParseMessage(data); err != nil {
+			handler.handleError(err, addr.String())
+		} else {
+			handler.handleMessage(msg, addr.String())
+		}
+	}
+	var (
+		num   int
+		err   error
+		raddr net.Addr
+	)
+	for {
+		num, raddr, err = handler.Connection().ReadFrom(buf)
+		if err != nil {
+			handler.fields.Debug("exit")
+			return
+		}
+		cp := make([]byte, num)
+		copy(cp, buf[:num])
+		go redirect(cp, raddr)
+	}
+}
+
+func (handler *connectionHandler) readConnection() {
+	streamed := handler.Connection().Streamed()
+	if streamed {
+		handler.readStream()
+	} else {
+		handler.readPacket()
+	}
 }
 
 func (handler *connectionHandler) handleMessage(msg sip.Message, raddr string) {
@@ -574,7 +595,6 @@ func (handler *connectionHandler) handleMessage(msg sip.Message, raddr string) {
 		viaHop, ok := msg.ViaHop()
 		if !ok {
 			handler.Fields().Warn("ignore message without 'Via' header")
-
 			return
 		}
 
@@ -618,52 +638,6 @@ func (handler *connectionHandler) handleMessage(msg sip.Message, raddr string) {
 	}
 }
 
-func (handler *connectionHandler) pipeOutputs(msgs <-chan sip.Message, errs <-chan error) {
-	streamed := handler.Connection().Streamed()
-	for {
-		select {
-		case <-handler.timer.C():
-			var raddr string
-			if streamed {
-				raddr = fmt.Sprintf("%v", handler.Connection().RemoteAddr())
-			}
-
-			if handler.Expiry().IsZero() {
-				// handler expiryTime is zero only when TTL = 0 (unlimited handler)
-				// so we must not get here with zero expiryTime
-				handler.Fields().Fatal("fires expiry timer with ZERO expiryTime")
-			}
-			// pass up to the pool
-			handler.handleError(ExpireError("connection expired"), raddr)
-		case msg, ok := <-msgs:
-			if !ok {
-				return
-			}
-			handler.handleMessage(msg, handler.getRemoteAddr())
-		case err, ok := <-errs:
-			if !ok {
-				return
-			}
-			handler.handleError(err, handler.getRemoteAddr())
-		}
-	}
-}
-
-func (handler *connectionHandler) getRemoteAddr() string {
-	if handler.Connection().Streamed() {
-		return fmt.Sprintf("%v", handler.Connection().RemoteAddr())
-	} else {
-		// use non-blocking read because remote address already should be here
-		// or error occurred in read connection goroutine
-		select {
-		case v := <-handler.addrs.Out:
-			return v.(string)
-		default:
-			return "<nil>"
-		}
-	}
-}
-
 func isSyntaxError(err error) bool {
 	var perr parser.Error
 	if errors.As(err, &perr) && perr.Syntax() {
@@ -703,6 +677,7 @@ func (handler *connectionHandler) Cancel() {
 	handler.cancelOnce.Do(func() {
 		close(handler.canceled)
 		_ = handler.Connection().Close()
+		handler.fields.Debug("canceled")
 	})
 }
 

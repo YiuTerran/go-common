@@ -273,7 +273,7 @@ func RegisterInstanceWithMeta(meta map[string]string) {
 	_ = RegisterInstance()
 }
 
-// 手动注册服务地址信息 如外网地址手动注册
+// RegisterInstanceWithAddr 手动注册服务地址信息 如外网地址手动注册
 func RegisterInstanceWithAddr(ip string, port uint64) error {
 	instanceParam.Ip = ip
 	instanceParam.Port = port

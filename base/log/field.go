@@ -37,6 +37,9 @@ func (f Fields) WithPrefix(prefix string) Fields {
 // 不要直接修改f，防止并发问题
 func MergeFields(f Fields, fields ...Fields) Fields {
 	all := make(Fields, len(f))
+	for k, v := range f {
+		all[k] = v
+	}
 	for _, field := range fields {
 		for k, v := range field {
 			all[k] = v

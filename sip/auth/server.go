@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"github.com/samber/lo"
@@ -45,11 +46,11 @@ type UacParam struct {
 
 type Config struct {
 	// CheckRegister Register请求验证
-	CheckRegister func(req sip.Request, authArgs sip.Params) CheckResult
+	CheckRegister func(ctx context.Context, req sip.Request, authArgs sip.Params) CheckResult
 	// AuthParam 自定义认证参数
-	AuthParam func(req sip.Request) UacParam
+	AuthParam func(ctx context.Context, req sip.Request) UacParam
 	// CheckUser 非Register请求校验是否已认证过，返回用户信息或者需要认证的参数
-	CheckUser func(req sip.Request) (user any, param UacParam)
+	CheckUser func(ctx context.Context, req sip.Request) (user any, param UacParam)
 	// CloseSig 相关线程销毁信号
 	CloseSig chan struct{}
 }
@@ -85,31 +86,31 @@ func NewServerAuthorizer(config *Config) *ServerAuthorizer {
 // Authenticate handles server auth requests.
 // user:用户相关信息，这个数据实际上还是来自业务自己
 // isNew: 是否重新认证，虽然标准中没写，实测在运行中如果返回401，设备可能并不会重新Register，而是直接在下一个请求中带上Authorization字段
-func (auth *ServerAuthorizer) Authenticate(request sip.Request, tx sip.ServerTransaction) (user any, isNew bool) {
+func (auth *ServerAuthorizer) Authenticate(ctx context.Context, request sip.Request, tx sip.ServerTransaction) (user any, isNew bool) {
 	from, _ := request.From()
 	headers := request.GetHeaders("Authorization")
 
 	if request.Method() == sip.REGISTER && len(headers) == 0 {
 		// 提示用户认证
-		auth.requestAuthentication(request, tx, from)
+		auth.requestAuthentication(ctx, request, tx, from)
 		return nil, false
 	} else if len(headers) > 0 {
 		authenticateHeader := headers[0].(*sip.GenericHeader)
 		authArgs := parseAuthHeader(authenticateHeader.Contents)
-		return auth.checkAuthorization(request, tx, authArgs, from), true
+		return auth.checkAuthorization(ctx, request, tx, authArgs, from), true
 	} else {
 		// 非Register请求，确认请求者已经注册过
-		user, param := auth.CheckUser(request)
+		user, param := auth.CheckUser(ctx, request)
 		if user == nil {
 			log.Debug("req user not authed:%s", request.String())
-			auth.requestAuthentication(request, tx, from, param)
+			auth.requestAuthentication(ctx, request, tx, from, param)
 			return nil, false
 		}
 		return user, false
 	}
 }
 
-func (auth *ServerAuthorizer) requestAuthentication(request sip.Request, tx sip.ServerTransaction,
+func (auth *ServerAuthorizer) requestAuthentication(ctx context.Context, request sip.Request, tx sip.ServerTransaction,
 	from *sip.FromHeader, params ...UacParam) {
 	callID, ok := request.CallID()
 	if !ok {
@@ -122,11 +123,11 @@ func (auth *ServerAuthorizer) requestAuthentication(request sip.Request, tx sip.
 	// 避免重复计算，某些时候这个值应该是已经知道的
 	var param UacParam
 	if len(params) == 0 {
-		param = auth.AuthParam(request)
+		param = auth.AuthParam(ctx, request)
 	} else {
 		param = params[0]
 	}
-	if param.Status > 0 {
+	if param.Status != 0 {
 		sendResponse(request, tx, param.Status, "")
 		return
 	}
@@ -161,7 +162,7 @@ func (auth *ServerAuthorizer) requestAuthentication(request sip.Request, tx sip.
 	}
 }
 
-func (auth *ServerAuthorizer) checkAuthorization(request sip.Request, tx sip.ServerTransaction,
+func (auth *ServerAuthorizer) checkAuthorization(ctx context.Context, request sip.Request, tx sip.ServerTransaction,
 	authArgs sip.Params, from *sip.FromHeader) any {
 	callID, ok := request.CallID()
 	if !ok {
@@ -173,23 +174,23 @@ func (auth *ServerAuthorizer) checkAuthorization(request sip.Request, tx sip.Ser
 	session, found := auth.sessions[callID.String()]
 	auth.mx.RUnlock()
 	if !found {
-		auth.requestAuthentication(request, tx, from)
+		auth.requestAuthentication(ctx, request, tx, from)
 		return nil
 	}
 
 	if time.Now().After(session.expireTime) {
-		auth.requestAuthentication(request, tx, from)
+		auth.requestAuthentication(ctx, request, tx, from)
 		return nil
 	}
 
 	//不应该要求username与from中的user相同
 
 	if nonce, ok := authArgs.Get("nonce"); ok && nonce.String() != session.nonce {
-		auth.requestAuthentication(request, tx, from)
+		auth.requestAuthentication(ctx, request, tx, from)
 		return nil
 	}
 
-	r := auth.CheckRegister(request, authArgs)
+	r := auth.CheckRegister(ctx, request, authArgs)
 	if r.Status != 0 {
 		tips := lo.Ternary(r.Status >= 500, "Server Internal Error", "Auth Error")
 		sendResponse(request, tx, r.Status, tips)

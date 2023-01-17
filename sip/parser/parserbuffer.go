@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-// parserBuffer is a specialized buffer for use in the parser.
+// parserBuffer is a specialized buffer for use in the StreamParser.
 // It is written to via the non-blocking Write.
 // It exposes various blocking read methods, which wait until the requested
 // data is available, and then return it.
@@ -38,7 +38,7 @@ func newParserBuffer(logger log.Fields) *parserBuffer {
 	pb.pipeReader, pb.writer = io.Pipe()
 	pb.reader = bufio.NewReader(pb.pipeReader)
 	pb.fields = logger.
-		WithPrefix("parser.parserBuffer").
+		WithPrefix("StreamParser.parserBuffer").
 		WithFields(log.Fields{
 			"parser_buffer_ptr": fmt.Sprintf("%p", &pb),
 		})
@@ -109,11 +109,11 @@ func (pb *parserBuffer) NextChunk(n int) (response string, err error) {
 	return
 }
 
-// Stop the parser buffer.
+// Stop the StreamParser buffer.
 func (pb *parserBuffer) Stop() {
 	pb.mu.RLock()
 	if err := pb.pipeReader.Close(); err != nil {
-		pb.Fields().Error("parser pipe reader close failed: %s", err)
+		pb.Fields().Error("StreamParser pipe reader close failed: %s", err)
 	}
 	pb.mu.RUnlock()
 }

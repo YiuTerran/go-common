@@ -11,9 +11,11 @@
 由于go语言不太方便做依赖倒置，也没有类似spring的框架，所以这里封装的都是一些比较简单常用的功能。
 
 ```bash
+├── apm  # 分布式链路追踪基础库(openTelemetry)
 ├── base  # 基础库，常用数据结构和utils，log模块
 ├── db # sqlx + sqlbuiler的封装
 ├── ginutil # gin封装
+├── kgoutil # kgo(kafka lib)封装
 ├── module # 模块封装，将所有功能统一抽象为模块，提供启动器和模块间类似rpc的相互通信机制
 ├── nacos # 集成nacos和viper，配置管理和服务注册
 ├── network # tcp/udp对应module的封装，提供抽象解析器，提供json的一个范例实现

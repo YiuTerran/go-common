@@ -201,7 +201,6 @@ func (nd *node) serve() {
 			}
 			logger := nd.Fields().WithFields(response.Fields())
 			logger.Warn("received not matched response")
-
 		case err, ok := <-nd.tx.Errors():
 			if !ok {
 				return
@@ -228,42 +227,22 @@ func (nd *node) serve() {
 	}
 }
 
+// 每个请求一个独立处理协程
 func (nd *node) handleRequest(req sip.Request, tx sip.ServerTransaction) {
 	defer nd.hwg.Done()
 
-	logger := nd.Fields().WithFields(req.Fields())
 	nd.hmu.RLock()
 	handler, ok := nd.requestHandlers[req.Method()]
 	nd.hmu.RUnlock()
 
 	if !ok {
-		logger.Warn("SIP request handler not found")
-		if tx != nil {
-			go func(tx sip.ServerTransaction, fields log.Fields) {
-				for {
-					select {
-					case <-nd.tx.Done():
-						return
-					case err, ok := <-tx.Errors():
-						if !ok {
-							return
-						}
-						fields.Warn("error from SIP node transaction %s: %s", tx, err)
-					}
-				}
-			}(tx, logger)
-		}
-		// ACK request doesn't require any response, so just skip this step
-		if !req.IsAck() {
-			res := sip.NewResponseFromRequest("", req, 405, "Method Not Allowed", "")
-			if _, err := nd.Respond(res); err != nil {
-				logger.Error("respond '405 Method Not Allowed' failed: %s", err)
-			}
+		if tx != nil && !req.IsAck() {
+			_ = tx.Respond(sip.NewResponseFromRequest(
+				"", req, 405, "Method Not Allowed", ""))
 		}
 		return
 	}
-
-	go handler(req, tx)
+	handler(req, tx)
 }
 
 // Request Send SIP request and return a client transaction

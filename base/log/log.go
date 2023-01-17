@@ -178,10 +178,6 @@ func IsDebugEnabled() bool {
 	return proxy.zapLevel.Enabled(zapcore.DebugLevel)
 }
 
-func Config() *config {
-	return &proxy.config
-}
-
 type builder struct {
 	logger *loggerProxy
 }
