@@ -26,7 +26,7 @@ else
 end`
 	zaddIf = `
 local c = tonumber(redis.call('zscore', KEYS[1], ARGV[1]))
-local n = tonumber(KEYS[2])
+local n = tonumber(ARGV[2])
 if c then
 		%s      
 		redis.call('zadd', KEYS[1], n, ARGV[1])
@@ -66,6 +66,13 @@ if redis.call('exists', KEYS[1]) == 1 then
 end
 return 0
 `
+	hmsetIfKeyExist = `
+if redis.call('exists', KEYS[1]) == 1 then
+    redis.call('hmset', KEYS[1], unpack(ARGV))
+    return 1
+end
+return 0
+`
 	hgetset    = `redis.call('hget',KEYS[1],ARGV[1]); redis.call('hset',KEYS[1],ARGV[1],ARGV[2]); return old;`
 	ttlIfEqual = `
 local c = redis.call('get',KEYS[1])
@@ -92,5 +99,6 @@ var (
 	HDelIfEqual          = redis.NewScript(hdelIfEqual)
 	HGetSet              = redis.NewScript(hgetset)
 	HSetIfKeyExist       = redis.NewScript(hsetIfKeyExist)
+	HMSetIfKeyExist      = redis.NewScript(hmsetIfKeyExist)
 	ExpireIfEqual        = redis.NewScript(ttlIfEqual)
 )

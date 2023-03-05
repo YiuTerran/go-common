@@ -243,7 +243,10 @@ func ParseSipUri(uriStr string) (uri sip.SipUri, err error) {
 		qs := strings.Split(r1.RawQuery, "&")
 		for _, q := range qs {
 			if !strings.Contains(q, "=") {
-				err = fmt.Errorf("query string without `=` is not allowed")
+				err = &sip.MalformedMessageError{
+					Err: fmt.Errorf("query string without `=` is not allowed"),
+					Msg: uriStr,
+				}
 				return
 			}
 		}

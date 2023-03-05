@@ -3,9 +3,9 @@ module github.com/YiuTerran/go-common/ginutil
 go 1.18
 
 require (
-	github.com/YiuTerran/go-common/base v1.5.2
 	github.com/gin-gonic/gin v1.8.1
 	github.com/samber/lo v1.37.0
+	github.com/YiuTerran/go-common/base v1.5.4
 	go.uber.org/zap v1.24.0
 )
 
