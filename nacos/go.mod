@@ -3,9 +3,9 @@ module github.com/YiuTerran/go-common/nacos
 go 1.18
 
 require (
+	github.com/YiuTerran/go-common/base v1.5.4
 	github.com/nacos-group/nacos-sdk-go v1.1.4
 	github.com/spf13/viper v1.15.0
-	github.com/YiuTerran/go-common/base v1.5.4
 )
 
 require (

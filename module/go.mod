@@ -3,8 +3,8 @@ module github.com/YiuTerran/go-common/module
 go 1.18
 
 require (
-	github.com/samber/lo v1.37.0
 	github.com/YiuTerran/go-common/base v1.5.4
+	github.com/samber/lo v1.37.0
 )
 
 require (
